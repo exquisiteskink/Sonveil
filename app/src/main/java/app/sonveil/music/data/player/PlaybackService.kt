@@ -31,7 +31,9 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.SimpleBitmapLoader
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import app.sonveil.music.AuralisApp
@@ -161,13 +163,14 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             putString("app_name", "Sonveil")
         }
         val app = application as AuralisApp
-        val callback = AutoLibraryCallback(app.container, app.container.player)
+        val callback = AutoLibraryCallback(app.container, app.container.player, packageName)
         libraryCallback = callback
         val guarded = guardedPlayer(exo)
         session = MediaLibraryService.MediaLibrarySession.Builder(this, guarded, callback)
             .setId("app.sonveil.music.session")
             .setSessionActivity(openApp)
             .setExtras(extras)
+            .setBitmapLoader(CacheBitmapLoader(SimpleBitmapLoader()))
             .build()
         installPlayerListeners(exo)
         // applyReplayGain runs after settle when muteUntilBound; otherwise now.

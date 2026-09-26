@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import app.sonveil.music.R
 import app.sonveil.music.data.player.PlayerSettings
 import app.sonveil.music.data.remote.AlbumID3
 import app.sonveil.music.data.remote.Playlist
@@ -16,6 +17,7 @@ import app.sonveil.music.data.remote.SubsonicClient
  */
 class AutoMediaItemFactory(
     private val client: SubsonicClient,
+    private val packageName: String,
     private val bitrate: () -> Int,
 ) {
     fun root(): MediaItem = folder(
@@ -27,21 +29,25 @@ class AutoMediaItemFactory(
     fun playlistsRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.PLAYLISTS,
         title = "Playlists",
+        iconRes = R.drawable.ic_auto_playlists,
     )
 
     fun recentRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.RECENT,
         title = "Recently played",
+        iconRes = R.drawable.ic_auto_recent,
     )
 
     fun favoritesRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.FAVORITES,
         title = "Favorites",
+        iconRes = R.drawable.ic_auto_favorites,
     )
 
     fun newestRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.NEWEST,
         title = "Recently added",
+        iconRes = R.drawable.ic_auto_newest,
     )
 
     fun playlist(pl: Playlist): MediaItem = folder(
@@ -67,7 +73,7 @@ class AutoMediaItemFactory(
         val extras = Bundle().apply {
             putString("app_name", "Sonveil")
             putString("com.android.music.musicsource", "Sonveil")
-            if (!parentId.isNullOrBlank()) putString(AutoBrowseIds.EXTRA_PARENT, parentId)
+            if (parentId.isNotBlank()) putString(AutoBrowseIds.EXTRA_PARENT, parentId)
             song.replayGain?.trackGain?.takeIf { it.isFinite() }?.let { putFloat(PlayerSettings.EXTRA_RG_TRACK, it) }
             song.replayGain?.albumGain?.takeIf { it.isFinite() }?.let { putFloat(PlayerSettings.EXTRA_RG_ALBUM, it) }
             song.replayGain?.trackPeak?.takeIf { it.isFinite() }?.let { putFloat(PlayerSettings.EXTRA_RG_TRACK_PEAK, it) }
@@ -104,10 +110,15 @@ class AutoMediaItemFactory(
         title: String,
         subtitle: String? = null,
         artworkId: String? = null,
+        iconRes: Int? = null,
         mediaType: Int = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
         isPlayable: Boolean = false,
     ): MediaItem {
-        val art = client.coverUrl(artworkId, 400)
+        val art = when {
+            artworkId != null -> client.coverUrl(artworkId, 400)?.let { Uri.parse(it) }
+            iconRes != null -> Uri.parse("android.resource://$packageName/$iconRes")
+            else -> null
+        }
         return MediaItem.Builder()
             .setMediaId(mediaId)
             .setMediaMetadata(
@@ -119,7 +130,7 @@ class AutoMediaItemFactory(
                     .setMediaType(mediaType)
                     .setIsBrowsable(true)
                     .setIsPlayable(isPlayable)
-                    .setArtworkUri(art?.let { Uri.parse(it) })
+                    .setArtworkUri(art)
                     .build(),
             )
             .build()

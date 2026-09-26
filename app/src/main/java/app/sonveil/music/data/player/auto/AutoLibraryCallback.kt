@@ -1,7 +1,7 @@
 package app.sonveil.music.data.player.auto
 
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
@@ -22,26 +22,36 @@ import kotlinx.coroutines.launch
 /**
  * Media3 library callback: four Home-aligned browse roots + leaf play via
  * [PlayerController.adoptExternalQueue] + resolved stream MediaItems (same Subsonic stream URLs).
+ *
+ * Connection policy: same-UID phone controllers and trusted / allowlisted car hosts get full
+ * library + player commands. Unknown packages are rejected so arbitrary apps cannot drive the queue.
  */
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@UnstableApi
 class AutoLibraryCallback(
     private val container: AppContainer,
     private val playerController: PlayerController,
+    packageName: String,
 ) : MediaLibrarySession.Callback {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val factory = AutoMediaItemFactory(container.client) { playerController.transcodeBitrate }
+    private val factory = AutoMediaItemFactory(container.client, packageName) { playerController.transcodeBitrate }
     private val tree = AutoBrowseTree(container, factory)
 
     override fun onConnect(
         session: MediaSession,
         controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
-        val accepted = super.onConnect(session, controller)
-        if (controller.uid == android.os.Process.myUid()) return accepted
-        if (!controller.isTrusted) return MediaSession.ConnectionResult.reject()
-        // Trusted clients may select catalog IDs; callbacks resolve them to our own URLs.
-        return accepted
+        if (controller.uid == android.os.Process.myUid()) {
+            return super.onConnect(session, controller)
+        }
+        if (AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
+            // Explicit full command set — do not use reject() for Auto hosts that fail isTrusted.
+            return MediaSession.ConnectionResult.accept(
+                MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS,
+                MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
+            )
+        }
+        return MediaSession.ConnectionResult.reject()
     }
 
     override fun onGetLibraryRoot(
@@ -49,6 +59,7 @@ class AutoLibraryCallback(
         browser: MediaSession.ControllerInfo,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> {
+        // Must return quickly with a non-null root (no auth / network). AA times out otherwise.
         return Futures.immediateFuture(LibraryResult.ofItem(tree.rootItem(), params))
     }
 
@@ -60,11 +71,19 @@ class AutoLibraryCallback(
         pageSize: Int,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = futureResult {
-        val all = tree.childrenOf(parentId)
-        if (page < 0 || pageSize <= 0) return@futureResult LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
-        val from = (page.toLong() * pageSize).coerceAtMost(all.size.toLong()).toInt()
-        val to = (from.toLong() + pageSize).coerceAtMost(all.size.toLong()).toInt()
-        LibraryResult.ofItemList(ImmutableList.copyOf(all.subList(from, to)), params)
+        val normalized = AutoBrowseIds.normalizeParentId(parentId)
+        if (!tree.isRootId(normalized) && !tree.hasCredentials()) {
+            return@futureResult LibraryResult.ofError(
+                SessionError(
+                    SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED,
+                    "Sign in to Sonveil on your phone",
+                ),
+            )
+        }
+        val all = tree.childrenOf(normalized)
+        val sliced = AutoBrowsePaging.slice(all, page, pageSize)
+            ?: return@futureResult LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+        LibraryResult.ofItemList(ImmutableList.copyOf(sliced), params)
     }
 
     override fun onGetItem(
@@ -73,8 +92,22 @@ class AutoLibraryCallback(
         mediaId: String,
     ): ListenableFuture<LibraryResult<MediaItem>> = futureResult {
         val item = tree.item(mediaId)
-        if (item == null) LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
-        else LibraryResult.ofItem(item, null)
+        if (item == null) {
+            if (!tree.hasCredentials() && !AutoBrowseIds.isRoot(mediaId) &&
+                AutoBrowseIds.normalizeParentId(mediaId) !in rootTabIds()
+            ) {
+                LibraryResult.ofError(
+                    SessionError(
+                        SessionError.ERROR_SESSION_AUTHENTICATION_EXPIRED,
+                        "Sign in to Sonveil on your phone",
+                    ),
+                )
+            } else {
+                LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+            }
+        } else {
+            LibraryResult.ofItem(item, null)
+        }
     }
 
     override fun onSetMediaItems(
@@ -89,7 +122,9 @@ class AutoLibraryCallback(
             return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs))
         }
         return futureValue {
-            check(controller.isTrusted) { "Untrusted controller" }
+            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
+                "Untrusted controller"
+            }
             val resolved = tree.resolveQueue(mediaItems, startIndex)
                 ?: throw IllegalArgumentException("Unknown or stale browse item")
             val playable = factory.playableSongs(resolved.songs, resolved.parent)
@@ -97,7 +132,6 @@ class AutoLibraryCallback(
             MediaSession.MediaItemsWithStartPosition(playable, resolved.startIndex, startPositionMs)
         }
     }
-
 
     override fun onPlaybackResumption(
         session: MediaSession,
@@ -127,6 +161,13 @@ class AutoLibraryCallback(
     fun release() {
         scope.coroutineContext.job.cancel()
     }
+
+    private fun rootTabIds(): Set<String> = setOf(
+        AutoBrowseIds.PLAYLISTS,
+        AutoBrowseIds.RECENT,
+        AutoBrowseIds.FAVORITES,
+        AutoBrowseIds.NEWEST,
+    )
 
     private fun <T : Any> futureResult(block: suspend () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
         val future = SettableFuture.create<LibraryResult<T>>()

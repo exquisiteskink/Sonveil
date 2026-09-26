@@ -23,34 +23,47 @@ internal class AutoBrowseTree(
         items.playlistsRoot(), items.recentRoot(), items.favoritesRoot(), items.newestRoot(),
     )
 
-    suspend fun songsIn(parent: String): List<Song> = when {
-        parent == AutoBrowseIds.FAVORITES -> client.getStarredSongs()
-        AutoBrowseIds.parsePlaylistId(parent) != null -> client.getPlaylist(AutoBrowseIds.parsePlaylistId(parent)!!).entry
-        AutoBrowseIds.parseAlbumId(parent) != null -> client.getAlbum(AutoBrowseIds.parseAlbumId(parent)!!).song
-        else -> emptyList()
+    /** True when the parent is the AA tab root (no server call required). */
+    fun isRootId(parentId: String): Boolean = AutoBrowseIds.isRoot(parentId)
+
+    suspend fun hasCredentials(): Boolean = ensureCredentials()
+
+    suspend fun songsIn(parent: String): List<Song> {
+        val normalized = AutoBrowseIds.normalizeParentId(parent)
+        return when {
+            AutoBrowseIds.isFavorites(normalized) -> client.getStarredSongs()
+            AutoBrowseIds.parsePlaylistId(normalized) != null ->
+                client.getPlaylist(AutoBrowseIds.parsePlaylistId(normalized)!!).entry
+            AutoBrowseIds.parseAlbumId(normalized) != null ->
+                client.getAlbum(AutoBrowseIds.parseAlbumId(normalized)!!).song
+            else -> emptyList()
+        }
     }
 
     suspend fun childrenOf(parentId: String): List<MediaItem> {
+        val parent = AutoBrowseIds.normalizeParentId(parentId)
+        // Root tabs must load without waiting on login so AA can paint the app after select.
+        if (AutoBrowseIds.isRoot(parent)) return rootChildren()
         if (!ensureCredentials()) return emptyList()
-        return when (parentId) {
-            AutoBrowseIds.ROOT -> rootChildren()
+        return when (parent) {
             AutoBrowseIds.PLAYLISTS -> client.getPlaylists().map(items::playlist)
             AutoBrowseIds.RECENT -> client.getAlbumList2("recent", 48).map(items::album)
             AutoBrowseIds.NEWEST -> client.getAlbumList2("newest", 48).map(items::album)
-            else -> items.playableSongs(songsIn(parentId), parentId)
+            else -> items.playableSongs(songsIn(parent), parent)
         }
     }
 
     suspend fun item(mediaId: String): MediaItem? {
-        rootChildren().firstOrNull { it.mediaId == mediaId }?.let { return it }
-        if (mediaId == AutoBrowseIds.ROOT) return rootItem()
+        val id = AutoBrowseIds.normalizeParentId(mediaId)
+        rootChildren().firstOrNull { it.mediaId == id }?.let { return it }
+        if (AutoBrowseIds.isRoot(id)) return rootItem()
         if (!ensureCredentials()) return null
-        AutoBrowseIds.parsePlaylistId(mediaId)?.let { id ->
-            val pl = client.getPlaylist(id)
+        AutoBrowseIds.parsePlaylistId(id)?.let { playlistId ->
+            val pl = client.getPlaylist(playlistId)
             return items.playlist(Playlist(id = pl.id, name = pl.name, songCount = pl.songCount, coverArt = pl.coverArt))
         }
-        AutoBrowseIds.parseAlbumId(mediaId)?.let { id ->
-            val album = client.getAlbum(id)
+        AutoBrowseIds.parseAlbumId(id)?.let { albumId ->
+            val album = client.getAlbum(albumId)
             return items.album(AlbumID3(id = album.id, name = album.displayName, artist = album.artist, coverArt = album.coverArt))
         }
         val resolved = resolver.resolve(mediaId) ?: return null
