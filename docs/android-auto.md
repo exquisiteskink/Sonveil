@@ -1,0 +1,58 @@
+# Android Auto (Sonveil)
+
+Sonveil is a **media-category** Android Auto app: Media3 `MediaLibraryService` + `MediaBrowserService`, not a Car App Library template host.
+
+## What the car UI shows
+
+| Surface | Source |
+|---------|--------|
+| App list label | `android:label` → `@string/app_name` → **Sonveil** |
+| App list icon | `@mipmap/ic_launcher` |
+| Package identity | `applicationId` / namespace `app.sonveil.music` |
+| Browse tabs | Playlists, Recently played, Favorites, Recently added |
+
+Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** shown in the AA drawer.
+
+## Architecture (menu presence)
+
+1. `AndroidManifest`: `com.google.android.gms.car.application` → `@xml/automotive_app_desc` with `<uses name="media"/>`.
+2. Exported `PlaybackService` (`MediaLibraryService`) advertises:
+   - `androidx.media3.session.MediaLibraryService`
+   - `androidx.media3.session.MediaSessionService`
+   - `android.media.browse.MediaBrowserService`
+3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs) do not require login.
+4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build.
+5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
+
+Car App Library (`androidx.car.app`) is **not** required for drawer presence for media apps.
+
+## Owner one-time steps
+
+### A) Sideload / GitHub APK / DHU
+
+1. Install the Sonveil APK (`app.sonveil.music`).
+2. Open **Android Auto** app settings → tap **Version** ~10× → enable developer mode.
+3. Developer settings → enable **Unknown sources**.
+4. Optional: run Desktop Head Unit against the phone (see [Test using the DHU](https://developer.android.com/training/cars/testing/dhu)).
+5. In the car or DHU, open the AA app list / customize launcher and select **Sonveil**.
+
+Without Unknown sources, sideloaded media apps stay out of the AA app list even when the manifest is correct.
+
+### B) Production cars (Play)
+
+1. Play Console → form factors → add **Android Auto**.
+2. Upload an AA-capable AAB/APK to a testing track (internal/closed is enough to start).
+3. Complete the Android Auto declaration / quality checklist for media apps.
+4. Install from Play (or internal sharing) on the phone used in the car — trusted source, so Unknown sources is not required.
+
+## Residual limits
+
+- Voice / Assistant search intents are not advertised (browse-only MVP).
+- Sign-in must happen on the phone; Auto shows an authentication error if the library is opened while signed out.
+- **Menu / launcher presence is not claimed as fully closed without DHU or vehicle confirmation.** Unit tests and `assembleDebug` cover code + packaging only; owner should validate once on DHU or a car after install (Unknown sources or Play track).
+- Cover art downloads happen lazily in `CoverArtContentProvider.openFile`; first browse may show placeholders until cache fills.
+- DVC / Poweramp EQ / ReplayGain paths are unchanged by the Auto menu work.
+
+## Related research
+
+See [AA-MENU-RESEARCH.md](./AA-MENU-RESEARCH.md) (checklist + gap analysis).

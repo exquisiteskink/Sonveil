@@ -20,7 +20,9 @@
         </intent>
     </queries>
 
-    <!-- Browse-only MVP: voice/search intents are intentionally not advertised. -->
+    <!-- Browse-only MVP: voice/search intents are intentionally not advertised.
+         Android Auto drawer presence: MediaLibraryService + MediaBrowserService
+         intent + com.google.android.gms.car.application → automotive_app_desc media. -->
     <application
         tools:ignore="MissingIntentFilterForMediaSearch"
         android:name=".AuralisApp"
@@ -35,6 +37,7 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="true">
 
+        <!-- Required for Sonveil to appear in the Android Auto app list (media category). -->
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
@@ -56,14 +59,21 @@
             android:name=".data.player.PlaybackService"
             android:exported="true"
             android:label="@string/app_name"
+            android:icon="@mipmap/ic_launcher"
             android:foregroundServiceType="mediaPlayback">
+            <!-- Media3 + platform MediaBrowserService in one filter for PackageManager discovery. -->
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Local cover URIs for Android Auto / AAOS (HTTP artwork is rejected by the host). -->
+        <provider
+            android:name=".data.art.CoverArtContentProvider"
+            android:authorities="app.sonveil.music.coverart"
+            android:exported="true"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>
