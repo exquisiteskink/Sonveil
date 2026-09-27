@@ -2,9 +2,9 @@
 
 **A music player for the library you host.** Sonveil is a native Android app for Navidrome, Subsonic, and OpenSubsonic servers. Browse your collection, stream in original quality, save music for offline listening, and shape the sound to your taste.
 
-**Android 8.0+ · Version 1.3.9 · MIT licensed**
+**Android 8.0+ · Version 1.3.10 · MIT licensed**
 
-[Download from GitHub Releases](https://github.com/exquisiteskink/Sonveil/releases) · [What's new](RELEASE_NOTES_1.3.9.md) · [Changelog](CHANGELOG.md)
+[Download from GitHub Releases](https://github.com/exquisiteskink/Sonveil/releases) · [What's new](RELEASE_NOTES_1.3.10.md) · [Changelog](CHANGELOG.md)
 
 ## Screenshots
 
@@ -32,7 +32,7 @@ The Android package is `app.sonveil.music`. Versions 1.3.8 and newer upgrade in 
 - **Keep the queue under control:** play, shuffle, repeat, and jump to any queued song. Shuffle keeps the current song first and reorders the rest of the queue. Open Up Next with a swipe or the visible queue control.
 - **Listen your way:** stream original files by default, optionally transcode, and use ReplayGain, gapless playback, crossfade where compatible, a 10-band or parametric equalizer, and AutoEQ headphone profiles.
 - **Take music with you:** download albums or playlists, resume interrupted transfers, and play saved tracks without a connection.
-- **Stay connected:** control playback from notifications, the lock screen, Bluetooth devices, and Android Auto. Album artwork colors adapt the player in light and dark themes.
+- **Stay connected:** control playback from notifications, the lock screen, Bluetooth devices, and Android Auto. The Android Auto app list can show the Sonveil icon and launch the player. Album artwork colors adapt the player in light and dark themes.
 
 ## Privacy and network security
 

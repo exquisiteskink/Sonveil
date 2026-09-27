@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.10 — 2026-09-26
+
+### Fixed
+- Register Sonveil with Android Auto as a media app so the car launcher can show the Sonveil name and icon and open the player.
+- Let Android Auto, Automotive, and Assistant hosts browse and play when the media session is not marked trusted, and show Playlists, Recently played, Favorites, and Recently added before saved credentials are restored.
+- Return the full library list when Android Auto does not request a page size.
+- Serve album, playlist, and song artwork through a local content URI so Android Auto can display covers.
+
+### Validation
+- 88 unit tests passed; Android lint reported no errors and 19 warnings. The signed release APK matches the certificate used by 1.3.9. Android Auto launcher presence was not checked on a car or Desktop Head Unit.
+
 ## 1.3.9 — 2026-09-26
 
 ### Changed
