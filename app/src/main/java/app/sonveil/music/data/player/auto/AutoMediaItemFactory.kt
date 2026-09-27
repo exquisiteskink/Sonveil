@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import app.sonveil.music.R
+import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.player.PlayerSettings
 import app.sonveil.music.data.remote.AlbumID3
 import app.sonveil.music.data.remote.Playlist
@@ -13,7 +14,11 @@ import app.sonveil.music.data.remote.SubsonicClient
 
 /**
  * Builds browsable / playable MediaItems for Auto, mirroring [app.sonveil.music.data.player.PlayerController]
- * stream + artwork extras so leaf playback reuses the same Subsonic stream URLs.
+ * stream extras so leaf playback reuses the same Subsonic stream URLs.
+ *
+ * Artwork for playlist/album/song items uses [CoverArtContentProvider] `content://` URIs
+ * (Android Auto / AAOS require local content or android.resource URIs — not HTTP).
+ * Root tab icons stay on `android.resource://`.
  */
 class AutoMediaItemFactory(
     private val client: SubsonicClient,
@@ -69,7 +74,7 @@ class AutoMediaItemFactory(
     )
 
     fun song(song: Song, parentId: String, index: Int): MediaItem {
-        val art = client.coverUrl(song.coverArt, 800)
+        val art = CoverArtContentProvider.contentUri(song.coverArt, size = 800)
         val extras = Bundle().apply {
             putString("app_name", "Sonveil")
             putString("com.android.music.musicsource", "Sonveil")
@@ -94,7 +99,7 @@ class AutoMediaItemFactory(
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
-                    .setArtworkUri(art?.let { Uri.parse(it) })
+                    .setArtworkUri(art)
                     .setExtras(extras)
                     .build(),
             )
@@ -115,7 +120,7 @@ class AutoMediaItemFactory(
         isPlayable: Boolean = false,
     ): MediaItem {
         val art = when {
-            artworkId != null -> client.coverUrl(artworkId, 400)?.let { Uri.parse(it) }
+            artworkId != null -> CoverArtContentProvider.contentUri(artworkId, size = 400)
             iconRes != null -> Uri.parse("android.resource://$packageName/$iconRes")
             else -> null
         }

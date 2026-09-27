@@ -68,5 +68,12 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Local cover URIs for Android Auto / AAOS (HTTP artwork is rejected by the host). -->
+        <provider
+            android:name=".data.art.CoverArtContentProvider"
+            android:authorities="app.sonveil.music.coverart"
+            android:exported="true"
+            android:grantUriPermissions="true" />
     </application>
 </manifest>

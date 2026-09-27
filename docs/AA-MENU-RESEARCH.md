@@ -55,7 +55,8 @@ Sonveil is a library browser + streamer → stay on the Media3 media path.
 3. **`pageSize <= 0` returned `ERROR_BAD_VALUE`** — AA/Media3 hosts must not depend on pagination; treat non-positive pageSize as “return all”.
 4. **No root-tab icons** — AA prefers monochrome tab icons (discoverability / polish, not hard drawer gate).
 5. **No `BitmapLoader` on the library session** — artwork URIs (including `android.resource://` tab icons) may not decode for the host.
-6. **Owner one-time**: Unknown sources (sideload) and/or Play Console Android Auto form factor (production cars).
+6. **HTTP(S) `artworkUri` on browse items** — Auto/AAOS require local `content://` or `android.resource://` (see Google car-media artwork docs). Fixed via `CoverArtContentProvider`.
+7. **Owner one-time**: Unknown sources (sideload) and/or Play Console Android Auto form factor (production cars).
 
 ## Non-goals for this PR
 
@@ -63,3 +64,10 @@ Sonveil is a library browser + streamer → stay on the Media3 media path.
 - EQ / ReplayGain AudioSink changes
 - Inventing Subsonic APIs
 - Full cosmetic rename of leftover `AuralisApp` / `Theme.Auralis` (not shown in AA menu)
+
+## Process honesty
+
+Architecture + unit tests + APK packaging address the known code/manifest gaps above.
+They **do not** by themselves prove Sonveil appears in a given car or DHU launcher.
+Owner one-time: Unknown sources (sideload) and/or Play Console Android Auto form factor, then confirm select/browse on DHU or a vehicle.
+

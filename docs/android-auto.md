@@ -22,6 +22,7 @@ Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** 
    - `android.media.browse.MediaBrowserService`
 3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs) do not require login.
 4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build.
+5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
 
 Car App Library (`androidx.car.app`) is **not** required for drawer presence for media apps.
 
@@ -48,9 +49,10 @@ Without Unknown sources, sideloaded media apps stay out of the AA app list even 
 
 - Voice / Assistant search intents are not advertised (browse-only MVP).
 - Sign-in must happen on the phone; Auto shows an authentication error if the library is opened while signed out.
-- No device/DHU verification is claimed by CI; validate once on DHU or a vehicle after install.
+- **Menu / launcher presence is not claimed as fully closed without DHU or vehicle confirmation.** Unit tests and `assembleDebug` cover code + packaging only; owner should validate once on DHU or a car after install (Unknown sources or Play track).
+- Cover art downloads happen lazily in `CoverArtContentProvider.openFile`; first browse may show placeholders until cache fills.
 - DVC / Poweramp EQ / ReplayGain paths are unchanged by the Auto menu work.
 
 ## Related research
 
-See also `/workspace/AA-MENU-RESEARCH.md` on the agent box (checklist + gap analysis).
+See [AA-MENU-RESEARCH.md](./AA-MENU-RESEARCH.md) (checklist + gap analysis).
