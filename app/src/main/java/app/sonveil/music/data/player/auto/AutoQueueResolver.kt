@@ -9,7 +9,8 @@ internal class AutoQueueResolver(private val loadSongs: suspend (String) -> List
         val ref = AutoBrowseIds.parseSong(mediaId)
         val parent = ref?.parent ?: mediaId
         val normalized = AutoBrowseIds.normalizeParentId(parent)
-        if (!AutoBrowseIds.isFavorites(normalized) && AutoBrowseIds.parseAlbumId(normalized) == null &&
+        if (!AutoBrowseIds.isFavorites(normalized) && normalized != AutoBrowseIds.VOICE &&
+            AutoBrowseIds.parseAlbumId(normalized) == null &&
             AutoBrowseIds.parsePlaylistId(normalized) == null) return null
         val songs = loadSongs(normalized)
         if (songs.isEmpty()) return null

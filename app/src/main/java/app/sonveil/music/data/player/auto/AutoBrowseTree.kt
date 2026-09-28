@@ -1,5 +1,6 @@
 package app.sonveil.music.data.player.auto
 
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import app.sonveil.music.AppContainer
 import app.sonveil.music.data.remote.AlbumID3
@@ -12,6 +13,8 @@ internal class AutoBrowseTree(
 ) {
     private val client get() = container.client
     private val resolver = AutoQueueResolver(::songsIn)
+    private val voiceSearch = AutoVoiceSearch(client)
+    private var voiceSongs: List<Song> = emptyList()
 
     private suspend fun ensureCredentials(): Boolean {
         if (client.credentials == null) container.restoreSession()
@@ -31,6 +34,7 @@ internal class AutoBrowseTree(
     suspend fun songsIn(parent: String): List<Song> {
         val normalized = AutoBrowseIds.normalizeParentId(parent)
         return when {
+            normalized == AutoBrowseIds.VOICE -> voiceSongs
             AutoBrowseIds.isFavorites(normalized) -> client.getStarredSongs()
             AutoBrowseIds.parsePlaylistId(normalized) != null ->
                 client.getPlaylist(AutoBrowseIds.parsePlaylistId(normalized)!!).entry
@@ -74,5 +78,13 @@ internal class AutoBrowseTree(
         if (requested.isEmpty() || !ensureCredentials()) return null
         val focus = requested.getOrNull(if (startIndex < 0) 0 else startIndex) ?: return null
         return resolver.resolve(focus.mediaId)
+    }
+
+    suspend fun resolveVoice(query: String, extras: Bundle?): AutoQueueResolver.Queue? {
+        if (!ensureCredentials()) return null
+        val songs = voiceSearch.songs(query, extras).take(80)
+        if (songs.isEmpty()) return null
+        voiceSongs = songs
+        return AutoQueueResolver.Queue(songs, 0, AutoBrowseIds.VOICE)
     }
 }
