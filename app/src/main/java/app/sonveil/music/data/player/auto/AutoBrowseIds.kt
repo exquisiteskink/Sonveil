@@ -9,6 +9,7 @@ object AutoBrowseIds {
     const val RECENT = "sonveil_recent"
     const val FAVORITES = "sonveil_favorites"
     const val NEWEST = "sonveil_newest"
+    const val VOICE = "sonveil_voice"
     const val EXTRA_PARENT = "sonveil.parent_id"
 
     /** Pre-rebrand browse IDs (PR #8). Still accepted so in-flight Auto sessions keep resolving. */
@@ -52,7 +53,7 @@ object AutoBrowseIds {
         val parts = mediaId.split('/')
         if (parts.size != 4 || parts[0] != "song") return null
         val parent = decode(parts[1])?.let(::normalizeParentId) ?: return null
-        if (parent != FAVORITES && parsePlaylistId(parent) == null && parseAlbumId(parent) == null) return null
+        if (parent != FAVORITES && parent != VOICE && parsePlaylistId(parent) == null && parseAlbumId(parent) == null) return null
         val index = parts[2].toIntOrNull()?.takeIf { it >= 0 } ?: return null
         val song = decode(parts[3])?.takeIf { it.isNotEmpty() } ?: return null
         return SongRef(song, parent, index)

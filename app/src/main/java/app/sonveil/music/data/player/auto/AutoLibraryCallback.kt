@@ -125,7 +125,13 @@ class AutoLibraryCallback(
             check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
                 "Untrusted controller"
             }
-            val resolved = tree.resolveQueue(mediaItems, startIndex)
+            val voiceRequest = mediaItems.singleOrNull()?.requestMetadata
+                ?.takeIf { it.searchQuery != null }
+            val resolved = if (voiceRequest != null) {
+                tree.resolveVoice(voiceRequest.searchQuery.orEmpty(), voiceRequest.extras)
+            } else {
+                tree.resolveQueue(mediaItems, startIndex)
+            }
                 ?: throw IllegalArgumentException("Unknown or stale browse item")
             val playable = factory.playableSongs(resolved.songs, resolved.parent)
             playerController.adoptExternalQueue(resolved.songs, resolved.startIndex)
@@ -153,9 +159,22 @@ class AutoLibraryCallback(
         mediaItems: MutableList<MediaItem>,
     ): ListenableFuture<MutableList<MediaItem>> {
         if (controller.uid == android.os.Process.myUid()) return Futures.immediateFuture(mediaItems)
-        // External selection uses onSetMediaItems. Arbitrary insertion has no index here
-        // with which to keep the phone's Song queue synchronized.
-        return Futures.immediateFailedFuture(UnsupportedOperationException("Select a browse item to replace the queue"))
+        // Legacy playFromSearch may arrive here instead of onSetMediaItems. Resolve the
+        // requested queue, and keep the phone queue in sync with the session queue.
+        val request = mediaItems.singleOrNull()?.requestMetadata
+            ?.takeIf { it.searchQuery != null }
+            ?: return Futures.immediateFailedFuture(
+                UnsupportedOperationException("Select a browse item to replace the queue"),
+            )
+        return futureValue {
+            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
+                "Untrusted controller"
+            }
+            val resolved = tree.resolveVoice(request.searchQuery.orEmpty(), request.extras)
+                ?: throw IllegalArgumentException("No music matches the voice request")
+            playerController.adoptExternalQueue(resolved.songs, 0)
+            factory.playableSongs(resolved.songs, resolved.parent).toMutableList()
+        }
     }
 
     fun release() {

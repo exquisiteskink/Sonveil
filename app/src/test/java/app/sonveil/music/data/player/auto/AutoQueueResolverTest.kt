@@ -33,6 +33,16 @@ class AutoQueueResolverTest {
         assertNull(resolver.resolve(AutoBrowseIds.song("new", parent, 4)))
     }
 
+    @Test fun voiceQueueItemResolvesAgainstCurrentVoiceResults() = runBlocking {
+        val songs = listOf(Song("first"), Song("second"))
+        val resolver = AutoQueueResolver { parent ->
+            assertEquals(AutoBrowseIds.VOICE, parent)
+            songs
+        }
+        val id = AutoBrowseIds.song("second", AutoBrowseIds.VOICE, 1)
+        assertEquals(1, resolver.resolve(id)!!.startIndex)
+    }
+
     @Test fun malformedAndBareIdsCannotBecomeStreamRequests() = runBlocking {
         val resolver = AutoQueueResolver { error("Must not load unknown IDs") }
         for (id in listOf("bare-id", "https://example.com/song", "song/../0/a", "song/a/-1/b")) {
