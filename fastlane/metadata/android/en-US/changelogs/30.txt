@@ -1,0 +1,3 @@
+Android Auto: show Sonveil in the car app list; browse Playlists, Recently played, Favorites, and Recently added; serve cover art via local content URIs; improve voice play-from-search.
+
+Requires Android 8.0+. Upgrades 1.3.9 in place (app.sonveil.music).

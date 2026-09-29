@@ -1,0 +1,19 @@
+Sonveil is a free and open-source Android music player for libraries you host yourself.
+
+Connect to Navidrome, Subsonic, or other OpenSubsonic-compatible servers. Stream original-quality audio (or optional transcoding), download albums and playlists for offline listening, and control playback from notifications, Bluetooth, and Android Auto.
+
+Highlights:
+• Browse albums, artists, playlists, favorites, and genres; search your library
+• ReplayGain (track/album), gapless playback, and crossfade
+• 10-band and parametric equalizer with AutoEQ headphone profiles
+• Sleep timer; Material 3 UI with album-art accents
+• Offline downloads with resume; Wi‑Fi-only option for hi-res fetches
+• Android Auto browse and voice play-from-search
+
+Privacy:
+Sonveil talks only to your music server. There is no account with us, no ads, and no telemetry or crash-reporting SDKs in the app. Credentials are encrypted on the device.
+
+Requires Android 8.0 or later and a reachable Subsonic-compatible server.
+
+Source: https://github.com/exquisiteskink/Sonveil
+License: MIT
