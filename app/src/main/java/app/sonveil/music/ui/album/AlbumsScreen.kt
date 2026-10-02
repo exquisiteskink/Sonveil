@@ -74,16 +74,20 @@ fun AlbumsScreen(
     LaunchedEffect(Unit) {
         folders = suspendRunCatching { client.getMusicFolders() }.getOrDefault(emptyList())
     }
-    LaunchedEffect(folderId) {
+    // One coroutine owns the selected folder's initial load and pagination.
+    // Switching folders cancels its request before starting the new one.
+    LaunchedEffect(client, folderId) {
         albums = emptyList()
         offset = 0
         more = true
+        error = null
+        listState.scrollToItem(0)
         loadPage(reset = true)
-    }
-    LaunchedEffect(listState, albums.size, more) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+        snapshotFlow {
+            (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) to albums.size
+        }
             .distinctUntilChanged()
-            .collect { last ->
+            .collect { (last, _) ->
                 if (more && !loading && albums.isNotEmpty() && last >= albums.size - 8) {
                     loadPage(reset = false)
                 }

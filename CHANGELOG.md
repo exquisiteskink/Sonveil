@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.11 — 2026-10-01
+
+### Fixed
+- Fall back between artwork sources and show placeholders for missing album/artist images.
+- Decode local media-session artwork correctly for notifications.
+- Isolate artwork by account, bound the cache, and publish concurrent downloads atomically.
+- Serialize album initial loading and pagination; cancel obsolete lyrics requests.
+
+### Changed
+- Share lifecycle-aware playback UI state and narrow Home/song-row observations.
+- Animate palette backgrounds during drawing and use smaller palette input bitmaps.
+- Offer only Ko-fi and Liberapay donations, both under exquisiteskink, in the README, GitHub funding links, app Settings, and F-Droid submission metadata.
+- Prepare the F-Droid build recipe; official repository inclusion is pending.
+
+### Validation
+- 100 unit tests and two artwork device tests passed; lint reports no errors.
+- Galaxy Z Fold6 manual release checks passed for artwork, playback controls, album pagination, notifications, and theme changes. A short frame sample recorded 1.86% jank and a 16 ms 99th percentile; car and unfolded-display checks remain outstanding.
+
 ## 1.3.10 — 2026-09-26
 
 ### Fixed

@@ -36,7 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -76,6 +76,7 @@ import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.data.player.AuralisPalette
 import app.sonveil.music.data.player.auto.AutoVoiceSearch
 import app.sonveil.music.data.remote.suspendRunCatching
@@ -105,12 +106,12 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { AppearancePrefs(this) }
             var themeMode by remember { mutableStateOf(prefs.themeMode) }
             var transcode by remember { mutableIntStateOf(prefs.transcode) }
-            val playerState = container.player.state.collectAsState()
+            val playerState = container.player.state.collectAsStateWithLifecycle()
             val playerPalette by remember(playerState) {
                 androidx.compose.runtime.derivedStateOf { playerState.value.palette }
             }
-            val loggedIn by container.loggedIn.collectAsState()
-            val authResolved by container.authResolved.collectAsState()
+            val loggedIn by container.loggedIn.collectAsStateWithLifecycle()
+            val authResolved by container.authResolved.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) {
                 ThemeMode.System -> systemDark
@@ -134,6 +135,7 @@ class MainActivity : ComponentActivity() {
                 LocalContainer provides container,
                 LocalClient provides container.client,
                 LocalPlayer provides container.player,
+                LocalPlayerState provides playerState,
             ) {
                 AuralisTheme(palette = palette, themeMode = themeMode) {
                     val p = LocalPalette.current
@@ -219,7 +221,7 @@ private fun AuralisRoot(
     val nav = androidx.compose.runtime.key(loggedIn) { rememberNavController() }
     val p = LocalPalette.current
     val container = LocalContainer.current
-    val playerState = container.player.state.collectAsState()
+    val playerState = LocalPlayerState.current
     val hasCurrentSong by remember(playerState) {
         androidx.compose.runtime.derivedStateOf { playerState.value.current != null }
     }

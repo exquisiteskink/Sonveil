@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +63,7 @@ fun SettingsScreen(
     val p = LocalPalette.current
     val container = LocalContainer.current
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val playerPrefs = remember { PlayerSettings(context) }
     val downloads = container.downloads
     val dlState by downloads.state.collectAsState()
@@ -517,6 +519,16 @@ fun SettingsScreen(
                     showHeadphoneSearch = false
                 },
             )
+        }
+
+        SettingsGroup("Support Sonveil") {
+            Hint("Donations are optional and help support development.")
+            TextButton(onClick = { uriHandler.openUri("https://ko-fi.com/exquisiteskink") }) {
+                Text("Donate with Ko-fi", color = p.onBackground)
+            }
+            TextButton(onClick = { uriHandler.openUri("https://liberapay.com/exquisiteskink/") }) {
+                Text("Donate with Liberapay", color = p.onBackground)
+            }
         }
 
         SettingsGroup("About") {

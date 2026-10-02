@@ -17,6 +17,24 @@ class SubsonicClientTest {
     private val ok = """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
     private fun failure(code: Int) = """{"subsonic-response":{"status":"failed","error":{"code":$code}}}"""
 
+    @Test fun cancelledLyricsDoesNotStartFallbackRequest(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+            server.start()
+            val client = SubsonicClient()
+            client.credentials = StoredCredentials(server.url("/").toString(), "user", "password")
+            val job = launch(Dispatchers.Default) {
+                try {
+                    client.lyricsForSong(Song(id = "song", title = "Track", artist = "Artist"))
+                    fail("Cancellation must propagate")
+                } catch (_: CancellationException) { }
+            }
+            assertNotNull(withContext(Dispatchers.IO) { server.takeRequest(3, TimeUnit.SECONDS) })
+            withTimeout(2000) { job.cancelAndJoin() }
+            assertEquals(1, server.requestCount)
+        }
+    }
+
     @Test fun tokenLoginNeverSendsPasswordAndPublishesOnlyAfterSuccess() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody(ok))

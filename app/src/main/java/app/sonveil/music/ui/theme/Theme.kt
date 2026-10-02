@@ -13,6 +13,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,11 +29,13 @@ import androidx.compose.ui.unit.dp
 import app.sonveil.music.AppContainer
 import app.sonveil.music.data.player.AuralisPalette
 import app.sonveil.music.data.player.PlayerController
+import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.SubsonicClient
 
 val LocalPalette = staticCompositionLocalOf { AuralisPalette.darkDefault() }
 val LocalClient = staticCompositionLocalOf<SubsonicClient> { error("SubsonicClient not provided") }
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController not provided") }
+val LocalPlayerState = staticCompositionLocalOf<State<PlayerUiState>> { error("Player state not provided") }
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
 private val AuralisTypography = Typography(
@@ -83,39 +86,30 @@ fun AuralisTheme(
             surfaceVariant = palette.surfaceHigh,
         )
     }
-    val a = animateColorAsState(
-        palette.blurA,
-        AuralisMotion.emphasized(AuralisMotion.DurationPaletteMs),
-        label = "blurA",
-    )
-    val b = animateColorAsState(
-        palette.blurB,
-        AuralisMotion.emphasized(AuralisMotion.DurationPaletteMs),
-        label = "blurB",
-    )
-    val c = animateColorAsState(
-        palette.blurC,
-        AuralisMotion.emphasized(AuralisMotion.DurationPaletteMs),
-        label = "blurC",
-    )
-    val bg = animateColorAsState(
-        palette.background,
-        AuralisMotion.emphasized(AuralisMotion.DurationPaletteMs),
-        label = "bg",
-    )
-
     CompositionLocalProvider(LocalPalette provides palette) {
         MaterialTheme(colorScheme = scheme, typography = AuralisTypography) {
-            Box(Modifier.fillMaxSize().background(bg.value)) {
-                UltraBlurLayer(
-                    blurA = a.value,
-                    blurB = b.value,
-                    blurC = c.value,
-                    dark = dark,
-                )
+            Box(Modifier.fillMaxSize()) {
+                UltraBlurBackground(Modifier.fillMaxSize())
                 content()
             }
         }
+    }
+}
+
+@Composable
+private fun AnimatedUltraBlurLayer(
+    background: State<Color>,
+    blurA: State<Color>,
+    blurB: State<Color>,
+    blurC: State<Color>,
+    dark: Boolean,
+    modifier: Modifier,
+) {
+    // Read animation state during drawing so palette transitions don't recompose
+    // the navigation tree on every animation frame.
+    Canvas(modifier.fillMaxSize()) {
+        drawRect(background.value)
+        drawUltraBlur(blurA.value, blurB.value, blurC.value, dark)
     }
 }
 
@@ -128,48 +122,59 @@ fun UltraBlurLayer(
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        val r = maxOf(w, h)
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(blurA.copy(alpha = if (dark) 0.90f else 0.88f), Color.Transparent),
-                center = Offset(w * 0.18f, h * 0.12f),
-                radius = r * 0.85f,
-            ),
-        )
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(blurB.copy(alpha = if (dark) 0.75f else 0.80f), Color.Transparent),
-                center = Offset(w * 0.92f, h * 0.38f),
-                radius = r * 0.80f,
-            ),
-        )
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(blurC.copy(alpha = if (dark) 0.88f else 0.86f), Color.Transparent),
-                center = Offset(w * 0.45f, h * 1.05f),
-                radius = r * 0.95f,
-            ),
-        )
-        drawRect(
-            Brush.radialGradient(
-                colors = listOf(blurA.copy(alpha = if (dark) 0.40f else 0.50f), Color.Transparent),
-                center = Offset(w * 0.70f, h * 0.08f),
-                radius = r * 0.45f,
-            ),
-        )
-        drawRect(Color.Black.copy(alpha = if (dark) 0.28f else 0.06f))
+        drawUltraBlur(blurA, blurB, blurC, dark)
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUltraBlur(
+    blurA: Color,
+    blurB: Color,
+    blurC: Color,
+    dark: Boolean,
+) {
+    val w = size.width
+    val h = size.height
+    val r = maxOf(w, h)
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(blurA.copy(alpha = if (dark) 0.90f else 0.88f), Color.Transparent),
+            center = Offset(w * 0.18f, h * 0.12f),
+            radius = r * 0.85f,
+        ),
+    )
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(blurB.copy(alpha = if (dark) 0.75f else 0.80f), Color.Transparent),
+            center = Offset(w * 0.92f, h * 0.38f),
+            radius = r * 0.80f,
+        ),
+    )
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(blurC.copy(alpha = if (dark) 0.88f else 0.86f), Color.Transparent),
+            center = Offset(w * 0.45f, h * 1.05f),
+            radius = r * 0.95f,
+        ),
+    )
+    drawRect(
+        Brush.radialGradient(
+            colors = listOf(blurA.copy(alpha = if (dark) 0.40f else 0.50f), Color.Transparent),
+            center = Offset(w * 0.70f, h * 0.08f),
+            radius = r * 0.45f,
+        ),
+    )
+    drawRect(Color.Black.copy(alpha = if (dark) 0.28f else 0.06f))
 }
 
 @Composable
 fun UltraBlurBackground(modifier: Modifier = Modifier) {
     val p = LocalPalette.current
-    Box(modifier) {
-        Box(Modifier.fillMaxSize().background(p.background))
-        UltraBlurLayer(p.blurA, p.blurB, p.blurC, p.isDark, Modifier.fillMaxSize())
-    }
+    val spec = AuralisMotion.emphasized<Color>(AuralisMotion.DurationPaletteMs)
+    val bg = animateColorAsState(p.background, spec, label = "background")
+    val a = animateColorAsState(p.blurA, spec, label = "blurA")
+    val b = animateColorAsState(p.blurB, spec, label = "blurB")
+    val c = animateColorAsState(p.blurC, spec, label = "blurC")
+    AnimatedUltraBlurLayer(bg, a, b, c, p.isDark, modifier)
 }
 
 /** Translucent, edge-lit surface shared by player chrome and settings cards. */

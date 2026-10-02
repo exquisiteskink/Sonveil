@@ -24,10 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -50,6 +50,7 @@ import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -66,7 +67,10 @@ fun HomeScreen(
 ) {
     val client = LocalClient.current
     val player = LocalPlayer.current
-    val playerState by player.state.collectAsState()
+    val playerState = LocalPlayerState.current
+    val favoriteEpoch by remember(playerState) {
+        derivedStateOf { playerState.value.favoriteEpoch }
+    }
     val p = LocalPalette.current
     val scope = rememberCoroutineScope()
     var playlists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
@@ -106,8 +110,8 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) { load() }
-    LaunchedEffect(playerState.favoriteEpoch) {
-        if (playerState.favoriteEpoch > 0) {
+    LaunchedEffect(favoriteEpoch) {
+        if (favoriteEpoch > 0) {
             favorites = suspendRunCatching { client.getStarredSongs() }.getOrDefault(favorites)
         }
     }
@@ -201,7 +205,6 @@ fun HomeScreen(
                     SongRow(
                         song = song,
                         onClick = { player.play(favorites, i) },
-                        playing = playerState.current?.id == song.id,
                     )
                 }
                 Spacer(Modifier.height(18.dp))

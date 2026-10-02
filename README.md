@@ -30,7 +30,7 @@ Captured on a Galaxy Z Fold 6. Artwork comes from the connected music server.
 
 ## Features
 
-Verified against the current codebase (v1.3.10):
+Verified against the current codebase (v1.3.11):
 
 ### Library & playback
 - Browse albums, artists, playlists, favorites, and genres; search songs, artists, albums, and genres
@@ -92,11 +92,11 @@ Versions **1.3.8+** upgrade in place under `app.sonveil.music`. Builds **1.3.7 a
 2. Open the APK on your phone (allow installs from your browser/file manager if prompted).
 3. Enter your server URL and credentials.
 
-Latest notes: [1.3.10](RELEASE_NOTES_1.3.10.md) · full [Changelog](CHANGELOG.md)
+Latest notes: [1.3.11](RELEASE_NOTES_1.3.11.md) · full [Changelog](CHANGELOG.md)
 
 ### F-Droid (planned)
 
-F-Droid listing is **in preparation** — not published yet. Fastlane metadata lives under [`fastlane/metadata/android/`](fastlane/metadata/android/) for the future submission. Prefer GitHub Releases until an official F-Droid package appears.
+Sonveil is **not published on F-Droid yet**. The [submission guide and build metadata](docs/fdroid-submission.md) are prepared, including Ko-fi and Liberapay donation links. Store descriptions and screenshots live under [`fastlane/metadata/android/`](fastlane/metadata/android/). Use GitHub Releases until F-Droid accepts and publishes the app.
 
 ### Build from source
 
@@ -115,19 +115,12 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Support & donations
 
-Sonveil is free and open source. Donations help keep development going and are useful for F-Droid / community funding later.
+Sonveil is free and open source. If you want to support development, you can donate through either of these services:
 
-**Status:** no live donation URLs are configured in the repo yet. Owner fill-in needed:
+- [Ko-fi — exquisiteskink](https://ko-fi.com/exquisiteskink)
+- [Liberapay — exquisiteskink](https://liberapay.com/exquisiteskink/)
 
-| Channel | Status | What to supply |
-|---------|--------|----------------|
-| GitHub Sponsors | Not enabled | Enable Sponsors on `exquisiteskink` (or an org), then set `github:` in [`.github/FUNDING.yml`](.github/FUNDING.yml) |
-| Liberapay | Placeholder | Liberapay username / URL |
-| Open Collective | Placeholder | Collective slug / URL |
-| Ko-fi / Buy Me a Coffee | Optional | Profile URL |
-| Bitcoin / Lightning | Optional | Address or BIP21 / LNURL |
-
-Until those are filled, star the repo, file thoughtful issues, and contribute patches. See [`.github/FUNDING.yml`](.github/FUNDING.yml).
+These are Sonveil's only donation channels. Donations are optional; every feature is available without payment.
 
 ---
 

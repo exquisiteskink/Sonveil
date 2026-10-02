@@ -13,8 +13,9 @@ android {
         applicationId = "app.sonveil.music"
         minSdk = 26
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.3.10"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 31
+        versionName = "1.3.11"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -70,6 +71,8 @@ android {
 }
 
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
