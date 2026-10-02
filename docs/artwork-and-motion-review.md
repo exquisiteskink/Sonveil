@@ -28,8 +28,9 @@ Run with JDK 17 and Android SDK 35:
 git diff --check
 ```
 
-Results: **100 unit tests passed**, with no failures or skipped tests. Debug lint reports
-**0 errors and 30 existing warnings**. Debug and unsigned release APKs build successfully.
+Results: **100 unit tests and 2 device tests passed**, with no failures or skipped tests.
+Debug lint reports **0 errors and 32 warnings** (the original 30 plus two dependency-update
+warnings for the new Android test libraries). Debug and unsigned release APKs build successfully.
 The debug APK signature is verified with Android's `apksigner`.
 
 New regression coverage includes cache/account isolation, concurrent matching requests,
@@ -42,10 +43,38 @@ Artifacts:
 - `app/build/outputs/apk/debug/app-debug.apk` — installable test build.
 - `app/build/outputs/apk/release/app-release-unsigned.apk` — unsigned release build.
 
-## Device checks still needed
+## Physical device testing — 2026-10-01
 
-No Android device or emulator was connected. These are source/build/regression results;
-frame times, actual artwork decoding/rendering, and car-host behavior were not measured.
+Test device: Samsung Galaxy Z Fold6 (`SM-F956U1`), Android 16, folded display at 968 × 2376.
+The test APK's certificate matched the installed 1.3.10 build.
+
+Initial authenticated checks confirmed visible artwork in Home and expanded Now Playing,
+queue navigation, and repeated Home/Artists scrolling. Device logs exposed a session and
+notification regression: `SimpleBitmapLoader` rejected the new content URIs with
+`MalformedURLException: unknown protocol: content`.
+
+The session now uses `CacheBitmapLoader(DataSourceBitmapLoader(context))`. Both device
+regression tests pass: decoding a real PNG through the scoped artwork content provider,
+and rejecting an artwork URI belonging to another account. Playback state collection is
+shared across the UI, and successfully loaded images remove the underlying placeholder
+icon to reduce extra drawing.
+
+Final authenticated playback/notification rendering and frame profiling still require
+signing back in on the phone. A car/Android Auto host has not been tested.
+
+### Device-test cleanup
+
+AGP 8.7.3's default test runner uninstalls both the target and test app after
+`connectedDebugAndroidTest`. The project now sets
+`android.injected.androidTest.leaveApksInstalledAfterRun=true` to preserve installed apps
+after future runs. Use a disposable emulator for automated tests; on a personal phone,
+verify matching signatures and use explicit `adb install -r` / `am instrument` commands
+without uninstalling the target app.
+
+The two tests only create and remove a uniquely named artwork override and change
+credentials in memory; they do not save test credentials or clear application storage.
+
+### Remaining checks
 
 - Check valid/missing/failed artist and album artwork, rapid track changes, and returning
   to a screen after the server recovers.
@@ -55,4 +84,6 @@ frame times, actual artwork decoding/rendering, and car-host behavior were not m
 - Switch servers/accounts with overlapping cover IDs, then relaunch and confirm current art.
 
 Implementation references: [Compose performance guidance](https://developer.android.com/develop/ui/compose/performance/bestpractices),
-[Coil 2.7 AsyncImage source](https://github.com/coil-kt/coil/blob/2.7.0/coil-compose-base/src/main/java/coil/compose/AsyncImage.kt).
+[Coil 2.7 AsyncImage source](https://github.com/coil-kt/coil/blob/2.7.0/coil-compose-base/src/main/java/coil/compose/AsyncImage.kt),
+[Media3 1.5.1 DataSourceBitmapLoader](https://github.com/androidx/media/blob/1.5.1/libraries/datasource/src/main/java/androidx/media3/datasource/DataSourceBitmapLoader.java),
+[AGP test cleanup option](https://issuetracker.google.com/issues/295039976).

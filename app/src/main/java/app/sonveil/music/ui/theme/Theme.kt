@@ -29,11 +29,13 @@ import androidx.compose.ui.unit.dp
 import app.sonveil.music.AppContainer
 import app.sonveil.music.data.player.AuralisPalette
 import app.sonveil.music.data.player.PlayerController
+import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.SubsonicClient
 
 val LocalPalette = staticCompositionLocalOf { AuralisPalette.darkDefault() }
 val LocalClient = staticCompositionLocalOf<SubsonicClient> { error("SubsonicClient not provided") }
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController not provided") }
+val LocalPlayerState = staticCompositionLocalOf<State<PlayerUiState>> { error("Player state not provided") }
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
 private val AuralisTypography = Typography(

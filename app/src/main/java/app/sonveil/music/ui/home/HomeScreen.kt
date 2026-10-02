@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -51,6 +50,7 @@ import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -67,7 +67,7 @@ fun HomeScreen(
 ) {
     val client = LocalClient.current
     val player = LocalPlayer.current
-    val playerState = player.state.collectAsStateWithLifecycle()
+    val playerState = LocalPlayerState.current
     val favoriteEpoch by remember(playerState) {
         derivedStateOf { playerState.value.favoriteEpoch }
     }

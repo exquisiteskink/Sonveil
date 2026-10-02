@@ -53,7 +53,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +86,7 @@ import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.AuralisMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.ui.theme.UltraBlurBackground
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -101,7 +101,7 @@ fun NowPlayingHost(
     bottomNavVisible: Boolean,
 ) {
     val player = LocalPlayer.current
-    val playerState = player.state.collectAsStateWithLifecycle()
+    val playerState = LocalPlayerState.current
     val ui by remember(playerState) {
         derivedStateOf { playerState.value.copy(positionMs = 0L) }
     }

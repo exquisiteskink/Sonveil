@@ -71,11 +71,11 @@ import app.sonveil.music.data.remote.formatDuration
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.ui.theme.sonveilGlass
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 
@@ -132,6 +132,7 @@ fun CoverArt(
     }
     var sourceIndex by remember(sources, localCacheKey) { mutableStateOf(0) }
     val source = sources.getOrNull(sourceIndex)
+    var imageLoaded by remember(source, localCacheKey) { mutableStateOf(false) }
     val request = remember(context, source, localUri, localCacheKey) {
         ImageRequest.Builder(context)
             .data(source)
@@ -146,9 +147,10 @@ fun CoverArt(
             .background(p.surfaceHigh.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
-        // Remains visible while loading and after failure, underneath the image.
-        Icon(fallback, if (source == null) contentDescription else null,
-            tint = p.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(36.dp))
+        if (!imageLoaded && (!retainPreviousOnChange || previousPainter == null)) {
+            Icon(fallback, if (source == null) contentDescription else null,
+                tint = p.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(36.dp))
+        }
         if (source != null) {
             AsyncImage(
                 model = request,
@@ -156,7 +158,10 @@ fun CoverArt(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
                 placeholder = if (retainPreviousOnChange) previousPainter else null,
-                onSuccess = { if (retainPreviousOnChange) previousPainter = it.painter },
+                onSuccess = {
+                    imageLoaded = true
+                    if (retainPreviousOnChange) previousPainter = it.painter
+                },
                 onError = {
                     previousPainter = null
                     sourceIndex += 1
@@ -321,7 +326,7 @@ fun SongRow(
 ) {
     val p = LocalPalette.current
     val player = LocalPlayer.current
-    val playerState = player.state.collectAsStateWithLifecycle()
+    val playerState = LocalPlayerState.current
     // Position ticks and changes to other songs must not recompose every row.
     val favorite by remember(playerState, song) {
         derivedStateOf { playerState.value.isFavorite(song) }
