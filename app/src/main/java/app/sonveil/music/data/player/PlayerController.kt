@@ -13,9 +13,11 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
 import app.sonveil.music.data.download.DownloadStore
+import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.remote.Song
 import app.sonveil.music.data.remote.SongLyrics
 import app.sonveil.music.data.remote.SubsonicClient
+import app.sonveil.music.data.remote.suspendRunCatching
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -94,6 +96,7 @@ class PlayerController(
     private var controller: MediaController? = null
     private var connection: ListenableFuture<MediaController>? = null
     private var artworkJob: Job? = null
+    private var lyricsJob: Job? = null
     private val albumCoverCache = mutableMapOf<String, String>()
     private val favoriteInFlight = mutableSetOf<String>()
     private var positionJob: Job? = null
@@ -223,6 +226,7 @@ class PlayerController(
     fun stopAndReset() {
         scope.coroutineContext.cancelChildren()
         artworkJob = null
+        lyricsJob = null
         albumCoverCache.clear()
         favoriteInFlight.clear()
         connection?.let { MediaController.releaseFuture(it) }
@@ -681,9 +685,10 @@ class PlayerController(
     }
 
     private fun refreshLyrics(song: Song) {
+        lyricsJob?.cancel()
         _state.update { it.copy(lyrics = null) }
-        scope.launch {
-            val lyrics = runCatching { client.lyricsForSong(song) }.getOrNull()
+        lyricsJob = scope.launch {
+            val lyrics = suspendRunCatching { client.lyricsForSong(song) }.getOrNull()
             if (_state.value.current?.id == song.id) _state.update { it.copy(lyrics = lyrics) }
         }
     }
@@ -719,7 +724,8 @@ class PlayerController(
 
     private suspend fun loadArtwork(coverId: String?): AuralisPalette? {
         val url = client.coverUrl(coverId, 800) ?: return null
-        val req = ImageRequest.Builder(context).data(url).size(800).allowHardware(false).build()
+        // Palette extraction needs a small software bitmap, not full-size cover art.
+        val req = ImageRequest.Builder(context).data(url).size(256).allowHardware(false).build()
         val result = context.imageLoader.execute(req)
         if (result is SuccessResult) {
             val bmp = (result.drawable as? BitmapDrawable)?.bitmap ?: return null
@@ -833,7 +839,10 @@ class PlayerController(
     }
 
     private fun Song.toMediaItem(): MediaItem {
-        val art = client.coverUrl(coverArt, 800)
+        val art = CoverArtContentProvider.contentUri(
+            coverArt, size = 800,
+            accountScope = client.credentials?.let { CoverArtContentProvider.accountScope(it, client.artworkNamespace) },
+        )
         val localUri = downloadStore?.let { store ->
             val creds = client.credentials ?: return@let null
             store.playbackUri(store.serverKey(creds), id)
@@ -859,7 +868,7 @@ class PlayerController(
                     .setDescription("Sonveil")
                     .setWriter("Sonveil")
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                    .setArtworkUri(art?.let { android.net.Uri.parse(it) })
+                    .setArtworkUri(art)
                     .setExtras(extras)
                     .build(),
             )

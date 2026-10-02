@@ -37,6 +37,9 @@ class SubsonicClient(
     @Volatile
     var credentials: StoredCredentials? = null
 
+    /** Private random namespace prevents artwork URIs from revealing credential hashes. */
+    internal val artworkNamespace: String = randomSalt(32)
+
     /**
      * Stable salt for cover-art URLs so Coil can cache within a session.
      * Stream/download URLs intentionally use a fresh salt per [streamUrl]/[downloadUrl]
@@ -205,7 +208,7 @@ class SubsonicClient(
     }
 
     suspend fun lyricsForSong(song: Song): SongLyrics? {
-        val structured = runCatching { get("getLyricsBySongId", "id" to song.id).lyricsList?.structuredLyrics }
+        val structured = suspendRunCatching { get("getLyricsBySongId", "id" to song.id).lyricsList?.structuredLyrics }
             .getOrNull()
             .orEmpty()
         val best = structured.firstOrNull { it.synced && it.line.isNotEmpty() }
@@ -220,13 +223,13 @@ class SubsonicClient(
         val artist = song.artist.orEmpty()
         val title = song.title
         if (artist.isBlank() && title.isBlank()) return null
-        val plain = runCatching {
+        val plain = suspendRunCatching {
             get("getLyrics", "artist" to artist, "title" to title).lyrics?.value
         }.getOrNull()
         return parseLrcOrPlain(plain)
     }
 
-    fun coverUrl(coverId: String?, size: Int = 600): String? {
+    fun coverUrl(coverId: String?, size: Int = 600, credentials: StoredCredentials? = this.credentials): String? {
         if (coverId.isNullOrBlank()) return null
         val creds = credentials ?: return null
         return buildUrl("getCoverArt", mapOf("id" to coverId, "size" to size.toString()), session = true, creds = creds)

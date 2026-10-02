@@ -53,7 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,7 +101,7 @@ fun NowPlayingHost(
     bottomNavVisible: Boolean,
 ) {
     val player = LocalPlayer.current
-    val playerState = player.state.collectAsState()
+    val playerState = player.state.collectAsStateWithLifecycle()
     val ui by remember(playerState) {
         derivedStateOf { playerState.value.copy(positionMs = 0L) }
     }

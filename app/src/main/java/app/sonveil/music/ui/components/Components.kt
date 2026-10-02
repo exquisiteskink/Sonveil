@@ -1,5 +1,6 @@
 package app.sonveil.music.ui.components
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -44,9 +45,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +73,9 @@ import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.sonveilGlass
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 
@@ -113,30 +117,50 @@ fun CoverArt(
     fallback: ImageVector = Icons.Rounded.Album,
     imageUrl: String? = null,
     retainPreviousOnChange: Boolean = false,
+    localUri: Uri? = null,
+    localCacheKey: String? = null,
 ) {
     val client = LocalClient.current
+    val context = LocalContext.current
     val p = LocalPalette.current
-    val url = imageUrl?.toHttpUrlOrNull()?.takeIf {
-        it.username.isEmpty() && it.password.isEmpty()
-    }?.toString() ?: client.coverUrl(coverId, 600)
+    val credentials = client.credentials
+    val sources = remember(client, credentials, coverId, imageUrl, localUri) {
+        val url = imageUrl?.toHttpUrlOrNull()?.takeIf {
+            it.username.isEmpty() && it.password.isEmpty()
+        }?.toString()
+        listOfNotNull(localUri, url, client.coverUrl(coverId, 600)).distinct()
+    }
+    var sourceIndex by remember(sources, localCacheKey) { mutableStateOf(0) }
+    val source = sources.getOrNull(sourceIndex)
+    val request = remember(context, source, localUri, localCacheKey) {
+        ImageRequest.Builder(context)
+            .data(source)
+            .apply { if (source != null && source == localUri) memoryCacheKey(localCacheKey) }
+            .build()
+    }
     val shape = if (corner >= 48.dp) CircleShape else RoundedCornerShape(corner)
-    var previousPainter by remember { mutableStateOf<Painter?>(null) }
+    var previousPainter by remember(credentials, retainPreviousOnChange) { mutableStateOf<Painter?>(null) }
     Box(
         modifier
             .clip(shape)
             .background(p.surfaceHigh.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
-        if (url.isNullOrBlank()) {
-            Icon(fallback, null, tint = p.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(36.dp))
-        } else {
+        // Remains visible while loading and after failure, underneath the image.
+        Icon(fallback, if (source == null) contentDescription else null,
+            tint = p.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(36.dp))
+        if (source != null) {
             AsyncImage(
-                model = url,
+                model = request,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
                 placeholder = if (retainPreviousOnChange) previousPainter else null,
                 onSuccess = { if (retainPreviousOnChange) previousPainter = it.painter },
+                onError = {
+                    previousPainter = null
+                    sourceIndex += 1
+                },
             )
         }
     }
@@ -297,10 +321,16 @@ fun SongRow(
 ) {
     val p = LocalPalette.current
     val player = LocalPlayer.current
-    val ui by player.state.collectAsState()
-    var menu by remember { mutableStateOf(false) }
-    val favorite = ui.isFavorite(song)
-    val isPlaying = playing || ui.current?.id == song.id
+    val playerState = player.state.collectAsStateWithLifecycle()
+    // Position ticks and changes to other songs must not recompose every row.
+    val favorite by remember(playerState, song) {
+        derivedStateOf { playerState.value.isFavorite(song) }
+    }
+    val current by remember(playerState, song.id) {
+        derivedStateOf { playerState.value.current?.id == song.id }
+    }
+    var menu by remember(song.id) { mutableStateOf(false) }
+    val isPlaying = playing || current
     Row(
         modifier
             .fillMaxWidth()

@@ -74,7 +74,7 @@ class AutoMediaItemFactory(
     )
 
     fun song(song: Song, parentId: String, index: Int): MediaItem {
-        val art = CoverArtContentProvider.contentUri(song.coverArt, size = 800)
+        val art = CoverArtContentProvider.contentUri(song.coverArt, size = 800, accountScope = artworkAccountScope())
         val extras = Bundle().apply {
             putString("app_name", "Sonveil")
             putString("com.android.music.musicsource", "Sonveil")
@@ -120,7 +120,7 @@ class AutoMediaItemFactory(
         isPlayable: Boolean = false,
     ): MediaItem {
         val art = when {
-            artworkId != null -> CoverArtContentProvider.contentUri(artworkId, size = 400)
+            artworkId != null -> CoverArtContentProvider.contentUri(artworkId, size = 400, accountScope = artworkAccountScope())
             iconRes != null -> Uri.parse("android.resource://$packageName/$iconRes")
             else -> null
         }
@@ -139,5 +139,9 @@ class AutoMediaItemFactory(
                     .build(),
             )
             .build()
+    }
+
+    private fun artworkAccountScope(): String? = client.credentials?.let {
+        CoverArtContentProvider.accountScope(it, client.artworkNamespace)
     }
 }

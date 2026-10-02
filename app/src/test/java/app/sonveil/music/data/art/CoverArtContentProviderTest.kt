@@ -4,9 +4,29 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import app.sonveil.music.data.auth.AuthMode
+import app.sonveil.music.data.auth.StoredCredentials
 
 /** Pure path encode/parse tests (no Android runtime / Robolectric). */
 class CoverArtContentProviderTest {
+
+    @Test
+    fun accountScope_isStableWithinSessionAndSeparatesServersAndAccounts() {
+        val credentials = StoredCredentials("https://music.example/", "alice", "password")
+        fun scopeFor(creds: StoredCredentials) = CoverArtContentProvider.accountScope(creds, "private-random-namespace")
+        val scope = scopeFor(credentials)
+        assertEquals(scope, scopeFor(credentials.copy(serverUrl = "https://music.example")))
+        assertEquals(scope, scopeFor(credentials.copy(transcodeBitrate = 192)))
+        assertEquals(scope, scopeFor(credentials.copy(password = "other-password")))
+        assertTrue(scope != CoverArtContentProvider.accountScope(credentials, "different-private-namespace"))
+        for (other in listOf(credentials.copy(username = "bob"),
+            credentials.copy(serverUrl = "https://other.example"),
+            credentials.copy(authMode = AuthMode.ApiKey, apiKey = "key-a"),
+            credentials.copy(authMode = AuthMode.ApiKey, apiKey = "key-b"))) {
+            assertTrue(scope != scopeFor(other))
+        }
+        assertTrue(scope.matches(Regex("[a-f0-9]{64}")))
+    }
 
     @Test
     fun buildEncodedPath_blank_returnsNull() {

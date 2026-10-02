@@ -36,7 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -105,12 +105,12 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { AppearancePrefs(this) }
             var themeMode by remember { mutableStateOf(prefs.themeMode) }
             var transcode by remember { mutableIntStateOf(prefs.transcode) }
-            val playerState = container.player.state.collectAsState()
+            val playerState = container.player.state.collectAsStateWithLifecycle()
             val playerPalette by remember(playerState) {
                 androidx.compose.runtime.derivedStateOf { playerState.value.palette }
             }
-            val loggedIn by container.loggedIn.collectAsState()
-            val authResolved by container.authResolved.collectAsState()
+            val loggedIn by container.loggedIn.collectAsStateWithLifecycle()
+            val authResolved by container.authResolved.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) {
                 ThemeMode.System -> systemDark
@@ -219,7 +219,7 @@ private fun AuralisRoot(
     val nav = androidx.compose.runtime.key(loggedIn) { rememberNavController() }
     val p = LocalPalette.current
     val container = LocalContainer.current
-    val playerState = container.player.state.collectAsState()
+    val playerState = container.player.state.collectAsStateWithLifecycle()
     val hasCurrentSong by remember(playerState) {
         androidx.compose.runtime.derivedStateOf { playerState.value.current != null }
     }
