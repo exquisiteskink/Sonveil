@@ -7,7 +7,7 @@ This release fixes artwork loading and reduces work during scrolling, playback u
 - Home and song rows avoid refreshing on every playback position tick; backgrounds animate during drawing.
 - Album pagination no longer competes with initial loading. Obsolete lyrics requests are cancelled.
 - Support development through [Ko-fi](https://ko-fi.com/exquisiteskink) or [Liberapay](https://liberapay.com/exquisiteskink/), both under **exquisiteskink**. The same links are available in Settings.
-- F-Droid submission metadata and donation links are prepared. Sonveil is not yet available in the official F-Droid repository.
+- [F-Droid submission](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847) is open with both donation links. Sonveil is awaiting review and is not yet available in the official F-Droid repository.
 
 Install `Sonveil-1.3.11.apk` on Android 8.0 or later. It upgrades Sonveil 1.3.8–1.3.10 in place using the existing signing certificate. Sonveil 1.3.7 and earlier use a different package and remain separate installs.
 

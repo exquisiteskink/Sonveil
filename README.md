@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/exquisiteskink/Sonveil)](https://github.com/exquisiteskink/Sonveil/releases/latest)
-[![F-Droid](https://img.shields.io/badge/F--Droid-coming%20soon-lightgrey)](https://github.com/exquisiteskink/Sonveil#install)
+[![F-Droid](https://img.shields.io/badge/F--Droid-coming%20soon-lightgrey)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847)
 
 **An audiophile Android player for the library you host.**
 
@@ -94,9 +94,9 @@ Versions **1.3.8+** upgrade in place under `app.sonveil.music`. Builds **1.3.7 a
 
 Latest notes: [1.3.11](RELEASE_NOTES_1.3.11.md) · full [Changelog](CHANGELOG.md)
 
-### F-Droid (planned)
+### F-Droid (submitted)
 
-Sonveil is **not published on F-Droid yet**. The [submission guide and build metadata](docs/fdroid-submission.md) are prepared, including Ko-fi and Liberapay donation links. Store descriptions and screenshots live under [`fastlane/metadata/android/`](fastlane/metadata/android/). Use GitHub Releases until F-Droid accepts and publishes the app.
+Sonveil has been [submitted to F-Droid](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847) and is **awaiting review and publication**. The submission includes Ko-fi and Liberapay donation links and requests verification with the existing signing certificate. See the [submission status and build recipe](docs/fdroid-submission.md). Use GitHub Releases until an official listing appears.
 
 ### Build from source
 
