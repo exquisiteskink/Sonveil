@@ -17,3 +17,7 @@ Requires Android 8.0 or later and a reachable Subsonic-compatible server.
 
 Source: https://github.com/exquisiteskink/Sonveil
 License: MIT
+
+Support development (optional):
+Ko-fi: https://ko-fi.com/exquisiteskink
+Liberapay: https://liberapay.com/exquisiteskink/

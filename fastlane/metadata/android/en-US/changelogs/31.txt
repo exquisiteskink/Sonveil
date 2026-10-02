@@ -1,0 +1,1 @@
+Fix album and artist artwork fallbacks and notification covers. Isolate and bound artwork caches. Reduce playback UI updates and palette animation overhead. Fix album pagination races and cancel obsolete lyrics requests. Add Ko-fi and Liberapay support links.
