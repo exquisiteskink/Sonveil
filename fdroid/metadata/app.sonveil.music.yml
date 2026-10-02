@@ -1,21 +1,20 @@
 Categories:
-  - Music
+  - Local Media Player
+  - Online Media Player
 License: MIT
 AuthorName: exquisiteskink
 SourceCode: https://github.com/exquisiteskink/Sonveil
 IssueTracker: https://github.com/exquisiteskink/Sonveil/issues
 Changelog: https://github.com/exquisiteskink/Sonveil/blob/HEAD/CHANGELOG.md
-Donate:
-  - https://ko-fi.com/exquisiteskink
+Donate: https://ko-fi.com/exquisiteskink
 Liberapay: exquisiteskink
 
 AutoName: Sonveil
 
-Binaries: https://github.com/exquisiteskink/Sonveil/releases/download/v%v/Sonveil-%v.apk
-AllowedAPKSigningKeys: efaaf8ce1f52c9760d539e1f4c49a29476ef45014aef4df0ea57740a3ce6bacb
-
 RepoType: git
 Repo: https://github.com/exquisiteskink/Sonveil.git
+Binaries:
+  https://github.com/exquisiteskink/Sonveil/releases/download/v%v/Sonveil-%v.apk
 
 Builds:
   - versionName: 1.3.11
@@ -24,6 +23,9 @@ Builds:
     subdir: app
     gradle:
       - yes
+
+AllowedAPKSigningKeys:
+  efaaf8ce1f52c9760d539e1f4c49a29476ef45014aef4df0ea57740a3ce6bacb
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
