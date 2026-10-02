@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/exquisiteskink/Sonveil)](https://github.com/exquisiteskink/Sonveil/releases/latest)
-[![F-Droid](https://img.shields.io/badge/F--Droid-coming%20soon-lightgrey)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847)
+[![F-Droid](https://img.shields.io/badge/F--Droid-submitted-lightgrey)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847)
 
 **An audiophile Android player for the library you host.**
 
