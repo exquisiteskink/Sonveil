@@ -2,7 +2,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/exquisiteskink/Sonveil)](https://github.com/exquisiteskink/Sonveil/releases/latest)
-[![F-Droid](https://img.shields.io/badge/F--Droid-submitted-lightgrey)](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847)
 
 **An audiophile Android player for the library you host.**
 
@@ -24,7 +23,7 @@ Sonveil streams and downloads music from **Navidrome**, **Subsonic**, and other 
 
 Captured on a Galaxy Z Fold 6. Artwork comes from the connected music server.
 
-> **Adding more shots:** drop phone PNGs in `docs/screenshots/` (and mirror into `fastlane/metadata/android/en-US/images/phoneScreenshots/` for F-Droid). Prefer portrait frames that show Home, Now Playing, library browse, and settings. Do not invent marketing mockups.
+> **Adding more shots:** drop phone PNGs in `docs/screenshots/`. Prefer portrait frames that show Home, Now Playing, library browse, and settings. Do not invent marketing mockups.
 
 ---
 
@@ -94,10 +93,6 @@ Versions **1.3.8+** upgrade in place under `app.sonveil.music`. Builds **1.3.7 a
 
 Latest notes: [1.3.11](RELEASE_NOTES_1.3.11.md) · full [Changelog](CHANGELOG.md)
 
-### F-Droid (submitted)
-
-Sonveil has been [submitted to F-Droid](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/50847) and is **awaiting review and publication**. The submission includes Ko-fi and Liberapay donation links and requests verification with the existing signing certificate. See the [submission status and build recipe](docs/fdroid-submission.md). Use GitHub Releases until an official listing appears.
-
 ### Build from source
 
 JDK **17** and Android SDK **35**:
@@ -140,7 +135,7 @@ These are Sonveil's only donation channels. Donations are optional; every featur
 | [docs/android-auto.md](docs/android-auto.md) | Android Auto browse, voice, and sideload setup |
 | [docs/poweramp-dvc.md](docs/poweramp-dvc.md) | Absolute volume / DVC notes (engineering) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [fastlane/metadata/android/en-US/](fastlane/metadata/android/en-US/) | F-Droid / store listing copy |
+| [fastlane/metadata/android/en-US/](fastlane/metadata/android/en-US/) | Store listing copy |
 
 ---
 
@@ -148,7 +143,7 @@ These are Sonveil's only donation channels. Donations are optional; every featur
 
 Bug reports, feature ideas, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Please keep user-facing product name **Sonveil** (package `app.sonveil.music`). Some internal class/prefs names may still say “Auralis” — that is intentional legacy and must not appear in README, store, or F-Droid copy.
+Please keep user-facing product name **Sonveil** (package `app.sonveil.music`). Some internal class/prefs names may still say “Auralis” — that is intentional legacy and must not appear in README or store copy.
 
 ---
 
