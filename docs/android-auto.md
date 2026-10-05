@@ -22,9 +22,10 @@ Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** 
    - `androidx.media3.session.MediaSessionService`
    - `android.media.browse.MediaBrowserService`
 3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs) do not require login.
-4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build.
+4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build. An allowlisted name is accepted only when that package is a system image app, shares a signer with Play services or the Play Store, or matches the known Android Auto production certificate. A sideloaded package that only copies the name is rejected.
 5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
 6. Assistant and Gemini play-from-search requests resolve through `AutoVoiceSearch` using the signed-in Subsonic library. Empty requests play favorites or the latest recent album; explicit song, album, artist, playlist and genre requests use the matching server APIs. The phone activity also handles the legacy `MEDIA_PLAY_FROM_SEARCH` intent.
+7. Playable item URIs are `sonveil://stream` locators. `PlaybackService` resolves them to authenticated Subsonic stream URLs inside the player, so session controllers do not receive API keys or salted tokens.
 
 Car App Library (`androidx.car.app`) is **not** required for drawer presence for media apps.
 
@@ -54,6 +55,7 @@ Without Unknown sources, sideloaded media apps stay out of the AA app list even 
 - **Menu / launcher presence is not claimed as fully closed without DHU or vehicle confirmation.** Unit tests and `assembleDebug` cover code + packaging only; owner should validate once on DHU or a car after install (Unknown sources or Play track).
 - Cover art downloads happen lazily in `CoverArtContentProvider.openFile`; first browse may show placeholders until cache fills.
 - DVC / Poweramp EQ / ReplayGain paths are unchanged by the Auto menu work.
+- If a legitimate Android Auto or Assistant build is signed with a key that is neither a system image, the pinned production cert, nor the Play services / Play Store signer, browse will fail closed. Add that cert digest to `AutoClientGate.pinnedCertSha256` rather than dropping the check.
 
 ## Related research
 
