@@ -41,12 +41,29 @@ class MediaArtworkLoaderTest {
 
     @Test fun sessionArtworkLoaderDecodesScopedContentUri() = withArtwork { app, coverId ->
         val client = app.container.client
-        val scope = CoverArtContentProvider.accountScope(requireNotNull(client.credentials), client.artworkNamespace)
-        val uri = requireNotNull(CoverArtContentProvider.contentUri(coverId, 128, scope))
+        val uri = requireNotNull(CoverArtContentProvider.authorizedContentUri(coverId, 128, client.credentials, client.artworkNamespace))
         val decoded = mediaArtworkBitmapLoader(app).loadBitmap(uri).get(5, TimeUnit.SECONDS)
         assertEquals(8, decoded.width)
         assertEquals(8, decoded.height)
         assertEquals(Color.RED, decoded.getPixel(4, 4))
+    }
+
+    @Test fun sessionArtworkLoaderRejectsTamperedSize() = withArtwork { app, coverId ->
+        val client = app.container.client
+        val issued = requireNotNull(CoverArtContentProvider.authorizedContentUri(coverId, 128, client.credentials, client.artworkNamespace))
+        val uri = issued.buildUpon().encodedPath(CoverArtContentProvider.buildEncodedPath(coverId, 256)).build()
+        val error = assertThrows(ExecutionException::class.java) {
+            mediaArtworkBitmapLoader(app).loadBitmap(uri).get(5, TimeUnit.SECONDS)
+        }
+        assertTrue(error.cause is java.io.IOException)
+    }
+
+    @Test fun sessionArtworkLoaderRejectsUnsignedUri() = withArtwork { app, coverId ->
+        val uri = requireNotNull(CoverArtContentProvider.contentUri(coverId, 128))
+        val error = assertThrows(ExecutionException::class.java) {
+            mediaArtworkBitmapLoader(app).loadBitmap(uri).get(5, TimeUnit.SECONDS)
+        }
+        assertTrue(error.cause is java.io.IOException)
     }
 
     @Test fun sessionArtworkLoaderRejectsAnotherAccountsUri() = withArtwork { app, coverId ->

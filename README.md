@@ -54,7 +54,7 @@ Verified against the current codebase (v1.3.11):
 ### Privacy by design
 - Talks only to **your** server — no analytics, crash reporters, or third-party trackers in the app
 - Credentials encrypted on-device (Android Keystore); excluded from Android backup
-- HTTPS required for public hosts; HTTP allowed for local network; system trust store for TLS
+- HTTPS required for public hosts; LAN HTTP requires explicit opt-in; system trust store for TLS
 
 ---
 
@@ -124,7 +124,7 @@ These are Sonveil's only donation channels. Donations are optional; every featur
 - **No telemetry.** The app does not ship analytics, crash-reporting, or advertising SDKs.
 - Library metadata, artwork, and audio come from **your** Subsonic-compatible server.
 - Credentials stay on the device (encrypted); `allowBackup` is disabled and backup rules exclude secrets.
-- Public servers must use HTTPS; cleartext is limited to local-network hosts. Cross-origin redirects are rejected.
+- Public servers must use HTTPS; cleartext is limited to local-network hosts and requires explicit consent at sign-in. API keys and salted login tokens can be captured and reused on HTTP connections. Existing HTTP accounts must sign in once to opt in after upgrading. Cross-origin redirects are rejected.
 
 ---
 
@@ -150,3 +150,10 @@ Please keep user-facing product name **Sonveil** (package `app.sonveil.music`). 
 ## License
 
 Sonveil is released under the [MIT License](LICENSE).
+
+### Security boundaries
+
+- Server-supplied artwork URLs are restricted to the configured server origin (scheme, host and port). Third-party artwork falls back to server cover art.
+- Android Auto artwork URIs carry a signed capability for the account, cover and size. Unsigned or modified URIs are rejected; capabilities expire on login/logout and process restart. Recipients can read the particular artwork URI shared with them.
+- Offline downloads stop at 2 GiB per file, keep at least 128 MiB free, and have a 30-minute overall request deadline. These limits may reject unusually large or slow downloads.
+- Voice playback uses the media service's controller authorization. The launcher activity no longer automatically executes legacy `MEDIA_PLAY_FROM_SEARCH` intents.

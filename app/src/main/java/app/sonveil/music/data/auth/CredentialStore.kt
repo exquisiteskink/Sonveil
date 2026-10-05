@@ -103,6 +103,7 @@ data class StoredCredentials(
     val apiKey: String = "",
     val authMode: AuthMode = AuthMode.Token,
     val transcodeBitrate: Int = 0,
+    val allowInsecureLanHttp: Boolean = false,
 )
 
 @Serializable

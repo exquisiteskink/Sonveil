@@ -1,6 +1,8 @@
 package app.sonveil.music.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Checkbox
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,13 +65,15 @@ fun LoginScreen() {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var httpWarning by remember { mutableStateOf(false) }
+    var allowInsecureLanHttp by remember { mutableStateOf(false) }
 
     // Retry a prior transient restore failure and prefill saved account fields.
     LaunchedEffect(Unit) {
         runCatching { container.restoreSession() }
         val stored = container.credentials.load() ?: return@LaunchedEffect
         if (url.isBlank()) url = stored.serverUrl
-        httpWarning = url.trim().startsWith("http://")
+        httpWarning = url.trim().startsWith("http://", ignoreCase = true)
+        allowInsecureLanHttp = stored.allowInsecureLanHttp
         when (stored.authMode) {
             AuthMode.ApiKey -> {
                 showApiKey = true
@@ -115,7 +119,8 @@ fun LoginScreen() {
                 value = url,
                 onValueChange = {
                     url = it
-                    httpWarning = it.trim().startsWith("http://")
+                    httpWarning = it.trim().startsWith("http://", ignoreCase = true)
+                    allowInsecureLanHttp = false
                 },
                 label = { Text("Server URL") },
                 placeholder = { Text("https://music.example.com") },
@@ -128,10 +133,18 @@ fun LoginScreen() {
             if (httpWarning) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "HTTP is only allowed for LAN addresses (localhost, .local, or a private IP). Prefer HTTPS. Token auth is used when the server supports it.",
+                    "HTTP exposes API keys and reusable login tokens to anyone who can intercept this connection. HTTPS is recommended, including on your LAN.",
                     color = p.secondary,
                     fontSize = 12.sp,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = allowInsecureLanHttp,
+                        onCheckedChange = { allowInsecureLanHttp = it },
+                        enabled = !loading,
+                    )
+                    Text("Allow insecure HTTP for this LAN server", color = p.onBackground, fontSize = 12.sp)
+                }
             }
             Spacer(Modifier.height(12.dp))
             if (!showApiKey) {
@@ -198,6 +211,7 @@ fun LoginScreen() {
                                     serverUrl = normalized,
                                     apiKey = apiKey.trim(),
                                     authMode = AuthMode.ApiKey,
+                                    allowInsecureLanHttp = httpWarning && allowInsecureLanHttp,
                                 )
                             } else {
                                 StoredCredentials(
@@ -205,6 +219,7 @@ fun LoginScreen() {
                                     username = username.trim(),
                                     password = password,
                                     authMode = AuthMode.Token,
+                                    allowInsecureLanHttp = httpWarning && allowInsecureLanHttp,
                                 )
                             }
                             container.signIn(creds)
@@ -219,7 +234,7 @@ fun LoginScreen() {
                         }
                     }
                 },
-                enabled = !loading && url.isNotBlank() && (showApiKey && apiKey.isNotBlank() || !showApiKey && username.isNotBlank() && password.isNotBlank()),
+                enabled = !loading && (!httpWarning || allowInsecureLanHttp) && url.isNotBlank() && (showApiKey && apiKey.isNotBlank() || !showApiKey && username.isNotBlank() && password.isNotBlank()),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = p.playButton, contentColor = p.onPlayButton),
@@ -230,7 +245,7 @@ fun LoginScreen() {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            "Passwords are encrypted in Android Keystore. Sign-in uses salted token auth when the server allows it. HTTP is limited to LAN; HTTPS is required on the public internet.",
+            "Passwords are encrypted in Android Keystore. Sign-in uses salted token auth when the server allows it. LAN HTTP requires explicit consent; HTTPS is required on the public internet.",
             color = p.onBackground.copy(alpha = 0.4f),
             fontSize = 11.sp,
             modifier = Modifier.padding(horizontal = 8.dp),
