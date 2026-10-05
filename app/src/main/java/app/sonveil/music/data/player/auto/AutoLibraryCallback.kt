@@ -21,16 +21,19 @@ import kotlinx.coroutines.launch
 
 /**
  * Media3 library callback: four Home-aligned browse roots + leaf play via
- * [PlayerController.adoptExternalQueue] + resolved stream MediaItems (same Subsonic stream URLs).
+ * [PlayerController.adoptExternalQueue] + resolved stream MediaItems (opaque locators;
+ * the player mints Subsonic stream URLs).
  *
- * Connection policy: same-UID phone controllers and trusted / allowlisted car hosts get full
- * library + player commands. Unknown packages are rejected so arbitrary apps cannot drive the queue.
+ * Connection policy: same-UID phone controllers and trusted / signature-checked car hosts
+ * get full library + player commands. Unknown packages, and allowlisted names that are not
+ * system or platform-signed, are rejected.
  */
 @UnstableApi
 class AutoLibraryCallback(
     private val container: AppContainer,
     private val playerController: PlayerController,
     packageName: String,
+    private val hostIdentity: (String?) -> AutoClientGate.HostIdentity = { pkg -> AutoClientGate.HostIdentity(pkg, false) },
 ) : MediaLibrarySession.Callback {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -44,8 +47,8 @@ class AutoLibraryCallback(
         if (controller.uid == android.os.Process.myUid()) {
             return super.onConnect(session, controller)
         }
-        if (AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
-            // Explicit full command set — do not use reject() for Auto hosts that fail isTrusted.
+        val host = hostIdentity(controller.packageName)
+        if (AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName, host.trustedHost)) {
             return MediaSession.ConnectionResult.accept(
                 MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS,
                 MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS,
@@ -59,7 +62,6 @@ class AutoLibraryCallback(
         browser: MediaSession.ControllerInfo,
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> {
-        // Must return quickly with a non-null root (no auth / network). AA times out otherwise.
         return Futures.immediateFuture(LibraryResult.ofItem(tree.rootItem(), params))
     }
 
@@ -118,11 +120,11 @@ class AutoLibraryCallback(
         startPositionMs: Long,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
         if (controller.uid == android.os.Process.myUid()) {
-            // Preserve the entire phone queue, metadata, URI/bitrate and start position.
             return Futures.immediateFuture(MediaSession.MediaItemsWithStartPosition(mediaItems, startIndex, startPositionMs))
         }
         return futureValue {
-            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
+            val host = hostIdentity(controller.packageName)
+            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName, host.trustedHost)) {
                 "Untrusted controller"
             }
             val voiceRequest = mediaItems.singleOrNull()?.requestMetadata
@@ -159,15 +161,14 @@ class AutoLibraryCallback(
         mediaItems: MutableList<MediaItem>,
     ): ListenableFuture<MutableList<MediaItem>> {
         if (controller.uid == android.os.Process.myUid()) return Futures.immediateFuture(mediaItems)
-        // Legacy playFromSearch may arrive here instead of onSetMediaItems. Resolve the
-        // requested queue, and keep the phone queue in sync with the session queue.
         val request = mediaItems.singleOrNull()?.requestMetadata
             ?.takeIf { it.searchQuery != null }
             ?: return Futures.immediateFailedFuture(
                 UnsupportedOperationException("Select a browse item to replace the queue"),
             )
         return futureValue {
-            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName)) {
+            val host = hostIdentity(controller.packageName)
+            check(AutoClientGate.mayBrowseAndPlay(controller.isTrusted, controller.packageName, host.trustedHost)) {
                 "Untrusted controller"
             }
             val resolved = tree.resolveVoice(request.searchQuery.orEmpty(), request.extras)
