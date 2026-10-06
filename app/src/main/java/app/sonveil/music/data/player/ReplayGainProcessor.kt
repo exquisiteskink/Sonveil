@@ -5,6 +5,7 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -32,8 +33,12 @@ class ReplayGainProcessor : BaseAudioProcessor() {
     override fun queueInput(inputBuffer: ByteBuffer) {
         val gain = linearGain
         val limit = limiter
-        if ((gain == 1f && !limit) || !inputBuffer.hasRemaining()) {
-            val out = replaceOutputBuffer(inputBuffer.remaining())
+        if (!inputBuffer.hasRemaining()) return
+        // Media3 delivers native-order PCM. ByteBuffer defaults to big endian, and
+        // reading samples that way byte-swaps the frame into metallic/robotic audio.
+        inputBuffer.order(ByteOrder.nativeOrder())
+        if (gain == 1f && !limit) {
+            val out = replaceOutputBuffer(inputBuffer.remaining()).order(ByteOrder.nativeOrder())
             out.put(inputBuffer)
             out.flip()
             return
@@ -42,7 +47,7 @@ class ReplayGainProcessor : BaseAudioProcessor() {
     }
 
     private fun process16(input: ByteBuffer, gain: Float, limit: Boolean) {
-        val out = replaceOutputBuffer(input.remaining())
+        val out = replaceOutputBuffer(input.remaining()).order(ByteOrder.nativeOrder())
         while (input.remaining() >= 2) {
             var x = input.short / 32768f * gain
             if (limit) x = x.coerceIn(-1f, 1f)
@@ -52,7 +57,7 @@ class ReplayGainProcessor : BaseAudioProcessor() {
     }
 
     private fun processFloat(input: ByteBuffer, gain: Float, limit: Boolean) {
-        val out = replaceOutputBuffer(input.remaining())
+        val out = replaceOutputBuffer(input.remaining()).order(ByteOrder.nativeOrder())
         while (input.remaining() >= 4) {
             var x = input.float * gain
             if (limit) x = x.coerceIn(-1f, 1f)
@@ -62,6 +67,9 @@ class ReplayGainProcessor : BaseAudioProcessor() {
     }
 
     companion object {
+        /** ReplayGain peak is a linear ratio. Values above this are not peaks (sample counts, percents). */
+        const val MAX_LINEAR_PEAK = 4f
+
         fun computeLinearGain(
             mode: ReplayGainMode,
             trackDb: Float,
@@ -80,8 +88,8 @@ class ReplayGainProcessor : BaseAudioProcessor() {
             var linear = 10.0.pow(db / 20.0).toFloat()
             if (limiter) {
                 val peak = when (mode) {
-                    ReplayGainMode.Track -> firstPositive(trackPeak, albumPeak)
-                    ReplayGainMode.Album -> firstPositive(albumPeak, trackPeak)
+                    ReplayGainMode.Track -> firstLinearPeak(trackPeak, albumPeak)
+                    ReplayGainMode.Album -> firstLinearPeak(albumPeak, trackPeak)
                     ReplayGainMode.Off -> 0f
                 }
                 if (peak > 0f) {
@@ -97,8 +105,8 @@ class ReplayGainProcessor : BaseAudioProcessor() {
             return 0f
         }
 
-        private fun firstPositive(vararg values: Float): Float {
-            for (v in values) if (v.isFinite() && v > 0f) return if (v > 8f) 10.0.pow(v / 20.0).toFloat() else v
+        private fun firstLinearPeak(vararg values: Float): Float {
+            for (v in values) if (v.isFinite() && v > 0f && v <= MAX_LINEAR_PEAK) return v
             return 0f
         }
 

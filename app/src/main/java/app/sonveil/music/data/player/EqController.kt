@@ -4,16 +4,16 @@ import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlin.math.abs
 import kotlin.math.log10
 
 /**
  * 10-band EQ attached to an ExoPlayer audio session.
  * Uses DynamicsProcessing on API 28+; otherwise the platform Equalizer.
  *
- * ReplayGain is applied as DynamicsProcessing input gain (dB) when available so
- * [androidx.media3.common.Player.setVolume] can stay at 1f — critical for external
- * equalizers that use Direct Volume Control (e.g. Poweramp EQ DVC).
+ * ReplayGain is applied in [ReplayGainProcessor], not here. Enabling
+ * DynamicsProcessing (and its pre-EQ stage) for gain tags sounds metallic or
+ * robotic on some devices. [applyReplayGainLinear] only disables a previously
+ * attached platform gain so AudioTrack volume can stay at 1f for DVC.
  */
 class EqController {
     private var dynamics: DynamicsProcessing? = null
@@ -43,7 +43,7 @@ class EqController {
                     false,
                 ).build()
                 DynamicsProcessing(0, audioSessionId, cfg).apply {
-                    enabled = settings.eqEnabled || abs(replayGainDb) > RG_DB_EPS
+                    enabled = false
                 }
             }.getOrNull()
         }
@@ -54,11 +54,13 @@ class EqController {
     }
 
     /**
-     * Apply ReplayGain as platform-effect input gain when DynamicsProcessing is active.
-     * @return true if gain was applied via the effect (caller should keep player volume at 1f).
+     * Park platform ReplayGain at unity and disable DynamicsProcessing.
+     * Gain itself is applied in decoded PCM. Returns true so callers keep player volume at 1f.
      */
-    fun applyReplayGainLinear(linear: Float, settings: PlayerSettings): Boolean {
-        replayGainDb = linearToDb(linear)
+    fun applyReplayGainLinear(@Suppress("UNUSED_PARAMETER") linear: Float, settings: PlayerSettings): Boolean {
+        // Platform input gain is what made tagged tracks robotic. Ignore the requested gain.
+        settings.replayGainMode
+        replayGainDb = 0f
         val dp = dynamics
         if (dp != null && Build.VERSION.SDK_INT >= 28) {
             val ok = runCatching {
@@ -71,8 +73,8 @@ class EqController {
     }
 
     /**
-     * Session effects carry ReplayGain only. Tone (10-band or parametric, plus
-     * preamp) is applied in [GraphicEqProcessor] so it does not fight Poweramp.
+     * Session effects carry no ReplayGain and no tone. Tone (10-band or parametric,
+     * plus preamp) is applied in [GraphicEqProcessor] so it does not fight Poweramp.
      */
     fun apply(settings: PlayerSettings) {
         dynamics?.let { dp ->
@@ -85,19 +87,8 @@ class EqController {
     @RequiresApi(28)
     private fun applyDynamics(dp: DynamicsProcessing) {
         runCatching {
-            val rgActive = abs(replayGainDb) > RG_DB_EPS
-            dp.enabled = rgActive
-            dp.setInputGainAllChannelsTo(replayGainDb.coerceIn(RG_DB_MIN, RG_DB_MAX))
-            if (!rgActive) return
-            val pre = dp.getPreEqByChannelIndex(0)
-            val n = pre.bandCount.coerceAtMost(10)
-            for (i in 0 until n) {
-                val band = pre.getBand(i)
-                band.isEnabled = true
-                band.cutoffFrequency = EqPresets.BANDS_HZ[i].toFloat()
-                band.gain = 0f
-                dp.setPreEqBandAllChannelsTo(i, band)
-            }
+            dp.enabled = false
+            dp.setInputGainAllChannelsTo(0f)
         }
     }
 
@@ -112,8 +103,8 @@ class EqController {
 
     /**
      * Steal platform effects from [other] without releasing them.
-     * Used when promoting the crossfade player so DynamicsProcessing (and RG
-     * input gain) stay attached to the already-audible audio session.
+     * Used when promoting the crossfade player so an already-open session effect
+     * stays attached to the audible AudioTrack.
      */
     fun adoptFrom(other: EqController) {
         if (other === this) return
@@ -130,7 +121,6 @@ class EqController {
     val audioSessionId: Int get() = sessionId
 
     companion object {
-        private const val RG_DB_EPS = 0.05f
         private const val RG_DB_MIN = -30f
         private const val RG_DB_MAX = 12f
 
