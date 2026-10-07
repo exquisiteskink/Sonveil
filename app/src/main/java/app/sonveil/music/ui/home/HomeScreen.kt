@@ -158,7 +158,7 @@ fun HomeScreen(
             }
 
             androidx.compose.material3.TextButton(onClick = onDownloads) {
-                Text("Downloads — listen offline", color = p.onBackground)
+                Text("Downloads — listen offline")
             }
 
             // Your playlists

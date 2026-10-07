@@ -319,7 +319,7 @@ fun SearchScreen(
                             },
                             modifier = Modifier.padding(horizontal = 12.dp),
                         ) {
-                            Text("More results", color = p.onBackground)
+                            Text("More results")
                         }
                     }
                 }

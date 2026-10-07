@@ -72,7 +72,7 @@ fun FavoritesScreen(
             item {
                 SectionHeader("Tracks")
                 TextButton(onClick = { player.play(starred.song, 0) }) {
-                    Text("Play all", color = p.onBackground)
+                    Text("Play all")
                 }
             }
             itemsIndexed(starred.song, key = { index, song -> "${song.id}-$index" }) { index, song ->

@@ -1,5 +1,6 @@
 package app.sonveil.music.ui.player
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -16,7 +17,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import app.sonveil.music.ui.theme.AuralisMotion
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.seekColors
 import app.sonveil.music.ui.theme.UltraBlurBackground
 
 @Composable
@@ -41,8 +44,12 @@ fun FlatSeekBar(
     val dur = durationMs.coerceAtLeast(1L)
     var preview by remember { mutableFloatStateOf(-1f) }
     val shown = if (preview >= 0f) preview else (positionMs.toFloat() / dur).coerceIn(0f, 1f)
-    val played = p.primary
-    val rest = if (p.isDark) Color.White.copy(alpha = 0.28f) else Color.Black.copy(alpha = 0.22f)
+    // Same art-derived, contrast-checked tokens as the mini player progress; no fixed colors.
+    val seek = p.seekColors
+    val spec = AuralisMotion.emphasized<Color>(AuralisMotion.DurationPaletteMs)
+    val played = animateColorAsState(seek.active, spec, label = "seek-active")
+    val thumb = animateColorAsState(seek.thumb, spec, label = "seek-thumb")
+    val rest = animateColorAsState(seek.inactive, spec, label = "seek-inactive")
 
     fun fractionAt(x: Float, width: Float): Float = (x / width).coerceIn(0f, 1f)
 
@@ -75,7 +82,7 @@ fun FlatSeekBar(
         val trackH = 3.dp.toPx()
         val splitX = size.width * shown
         drawLine(
-            rest,
+            rest.value,
             Offset(0f, mid),
             Offset(size.width, mid),
             trackH,
@@ -83,13 +90,13 @@ fun FlatSeekBar(
         )
         if (shown > 0.001f) {
             drawLine(
-                played,
+                played.value,
                 Offset(0f, mid),
                 Offset(splitX, mid),
                 trackH,
                 StrokeCap.Round,
             )
         }
-        drawCircle(played, radius = 5.dp.toPx(), center = Offset(splitX, mid))
+        drawCircle(thumb.value, radius = 5.dp.toPx(), center = Offset(splitX, mid))
     }
 }

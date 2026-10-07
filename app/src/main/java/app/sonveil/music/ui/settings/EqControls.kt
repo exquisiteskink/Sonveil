@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -36,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import app.sonveil.music.data.player.EqFilter
 import app.sonveil.music.data.player.EqPresets
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.seekColors
+import app.sonveil.music.ui.theme.sonveilSliderColors
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -88,18 +89,18 @@ fun ParametricBandEditor(
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onRemove) { Text("Remove", color = p.onBackground.copy(alpha = 0.7f)) }
+            TextButton(onClick = onRemove) { Text("Remove") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("PK" to "Peak", "LS" to "Low shelf", "HS" to "High shelf").forEach { (type, label) ->
                 val selected = filter.type == type
                 Text(
                     label,
-                    color = if (selected) p.background else p.onBackground,
+                    color = if (selected) p.onPrimary else p.onBackground,
                     fontSize = 12.sp,
                     modifier = Modifier
                         .background(
-                            if (selected) p.onBackground else p.onBackground.copy(alpha = 0.12f),
+                            if (selected) p.primary else p.onBackground.copy(alpha = 0.12f),
                             RoundedCornerShape(14.dp),
                         )
                         .clickable { onChange(filter.copy(type = type)) }
@@ -143,7 +144,7 @@ private fun LogHzSlider(hz: Float, onHz: (Float) -> Unit) {
             value = position,
             onValueChange = { onHz(10f.pow(it)) },
             valueRange = min..max,
-            colors = SliderDefaults.colors(thumbColor = p.primary, activeTrackColor = p.primary),
+            colors = sonveilSliderColors(),
         )
     }
 }
@@ -167,7 +168,7 @@ private fun DbSlider(
             value = value.coerceIn(valueRange.start, valueRange.endInclusive),
             onValueChange = onValue,
             valueRange = valueRange,
-            colors = SliderDefaults.colors(thumbColor = p.primary, activeTrackColor = p.primary),
+            colors = sonveilSliderColors(),
         )
     }
 }
@@ -220,7 +221,7 @@ private fun VerticalDbFader(
                 val trackLeft = size.width * 0.38f
                 val trackWidth = size.width * 0.24f
                 drawRoundRect(
-                    color = p.onBackground.copy(alpha = 0.18f),
+                    color = p.seekColors.inactive,
                     topLeft = Offset(trackLeft, 0f),
                     size = Size(trackWidth, size.height),
                     cornerRadius = CornerRadius(trackWidth, trackWidth),

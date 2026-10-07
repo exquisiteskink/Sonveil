@@ -29,9 +29,46 @@ data class AuralisPalette(
     val blurA: Color,
     val blurB: Color,
     val blurC: Color,
+    /**
+     * Full Material 3 roles derived from one seed (album art, or [WaveformGold] for the
+     * static app scheme). [primary]/[onPrimary] are taken from here so the palette and
+     * MaterialTheme can never disagree.
+     */
+    val scheme: ArtScheme,
+    /** True when colors came from the current track's artwork (false = static fallback). */
+    val fromArt: Boolean = false,
 ) {
     companion object {
-        fun darkDefault() = AuralisPalette(
+        private val DARK_DEFAULT by lazy { buildDarkDefault() }
+        private val LIGHT_DEFAULT by lazy { buildLightDefault() }
+
+        fun darkDefault(): AuralisPalette = DARK_DEFAULT
+
+        fun lightDefault(): AuralisPalette = LIGHT_DEFAULT
+
+        /**
+         * Single place that turns a set of art-derived surfaces plus a seed into a palette:
+         * accent roles come from the tonal [ArtScheme], contrast-checked against the
+         * surfaces they are drawn on.
+         */
+        internal fun withScheme(base: AuralisPalette, seed: Int, fromArt: Boolean): AuralisPalette {
+            val backdrops = listOf(base.background, base.surface, base.surfaceHigh, base.blurA, base.blurB, base.blurC)
+                .map { it.toArgb() }
+            val textBackdrops = listOf(base.surface, base.surfaceHigh).map { it.toArgb() }
+            val scheme = ArtScheme.from(seed, base.isDark, backdrops, textBackdrops)
+            return base.copy(
+                primary = Color(scheme.primary),
+                onPrimary = Color(scheme.onPrimary),
+                scheme = scheme,
+                fromArt = fromArt,
+            )
+        }
+
+        private val PlaceholderScheme: ArtScheme by lazy {
+            ArtScheme.from(WaveformGold.toArgb(), dark = true, backdrops = emptyList())
+        }
+
+        private fun buildDarkDefault() = withScheme(AuralisPalette(
             isDark = true,
             background = Color(0xFF070B13),
             surface = Color(0xFF101B2A),
@@ -50,9 +87,10 @@ data class AuralisPalette(
             blurA = Color(0xFF173650),
             blurB = Color(0xFF553314),
             blurC = Color(0xFF102036),
-        )
+            scheme = PlaceholderScheme,
+        ), WaveformGold.toArgb(), fromArt = false)
 
-        fun lightDefault() = AuralisPalette(
+        private fun buildLightDefault() = withScheme(AuralisPalette(
             isDark = false,
             background = Color(0xFFE2E2E2),
             surface = Color(0xFFEAEAEA),
@@ -71,7 +109,8 @@ data class AuralisPalette(
             blurA = Color(0xFFD4D4D4),
             blurB = Color(0xFFDEDEDE),
             blurC = Color(0xFFE8E8E8),
-        )
+            scheme = PlaceholderScheme,
+        ), WaveformGold.toArgb(), fromArt = false)
     }
 }
 
@@ -85,13 +124,17 @@ object PaletteExtractor {
         val lightMuted = palette.lightMutedSwatch
         val lightVibrant = palette.lightVibrantSwatch
         val dominant = palette.dominantSwatch
+        // One seed for every accent (seek bar, buttons, switches...), chosen from the whole
+        // artwork rather than a single fixed swatch.
+        val seed = ArtColorMath.pickSeed(palette.swatches.map { it.rgb to it.population })
+            ?: dominant?.rgb
+            ?: WaveformGold.toArgb()
 
-        return if (preferDark) {
+        val base = if (preferDark) {
             val a = (darkVibrant ?: vibrant ?: dominant)?.rgb.toColor(Color(0xFF3A2A22)).asBlur(0.22f, 0.42f, 0.55f)
             val b = (muted ?: darkMuted ?: dominant)?.rgb.toColor(Color(0xFF2A2420)).asBlur(0.16f, 0.32f, 0.45f)
             val c = (darkMuted ?: dominant ?: muted)?.rgb.toColor(Color(0xFF1A1614)).asBlur(0.10f, 0.24f, 0.40f)
             val mini = a.asBlur(0.18f, 0.30f, 0.40f)
-            val accent = (vibrant ?: lightVibrant ?: darkVibrant ?: dominant)?.rgb.toColor(WaveformGold).asAccent(dark = true)
             AuralisPalette(
                 isDark = true,
                 background = Color(0xFF000000),
@@ -99,7 +142,7 @@ object PaletteExtractor {
                 surfaceHigh = mini.lighten(0.08f),
                 onBackground = Color(0xFFFFFFFF),
                 onSurface = Color(0xFFE8E8E8),
-                primary = accent,
+                primary = Color(seed),
                 onPrimary = Color(0xFF1A1200),
                 secondary = b,
                 outline = Color.White.copy(alpha = 0.10f),
@@ -111,6 +154,7 @@ object PaletteExtractor {
                 blurA = a,
                 blurB = b,
                 blurC = c,
+                scheme = AuralisPalette.darkDefault().scheme,
             )
         } else {
             val a = (vibrant ?: lightVibrant ?: dominant)?.rgb.toColor(Color(0xFFC8C0B8)).asLightBlur(0.62f, 0.78f, 0.52f)
@@ -118,7 +162,6 @@ object PaletteExtractor {
             val c = (lightMuted ?: muted ?: dominant)?.rgb.toColor(Color(0xFFD0D0D0)).asLightBlur(0.74f, 0.86f, 0.32f)
             val page = b.asLightBlur(0.78f, 0.86f, 0.22f)
             val mini = a.asLightBlur(0.70f, 0.80f, 0.36f)
-            val accent = (vibrant ?: darkVibrant ?: lightVibrant ?: dominant)?.rgb.toColor(WaveformGold).asAccent(dark = false)
             AuralisPalette(
                 isDark = false,
                 background = page,
@@ -126,7 +169,7 @@ object PaletteExtractor {
                 surfaceHigh = a.asLightBlur(0.66f, 0.76f, 0.30f),
                 onBackground = Color(0xFF141414),
                 onSurface = Color(0xFF1A1A1A),
-                primary = accent,
+                primary = Color(seed),
                 onPrimary = Color.White,
                 secondary = b,
                 outline = Color.Black.copy(alpha = 0.10f),
@@ -138,8 +181,10 @@ object PaletteExtractor {
                 blurA = a,
                 blurB = b,
                 blurC = c,
+                scheme = AuralisPalette.darkDefault().scheme,
             )
         }
+        return AuralisPalette.withScheme(base, seed, fromArt = true)
     }
 
     private fun Int?.toColor(fallback: Color): Color = if (this == null) fallback else Color(this)
@@ -178,12 +223,4 @@ object PaletteExtractor {
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
-    private fun Color.asAccent(dark: Boolean): Color {
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(toArgb(), hsv)
-        if (hsv[1] < 0.28f) hsv[1] = 0.45f
-        hsv[1] = hsv[1].coerceIn(0.40f, 0.85f)
-        hsv[2] = if (dark) hsv[2].coerceIn(0.62f, 0.95f) else hsv[2].coerceIn(0.38f, 0.62f)
-        return Color(android.graphics.Color.HSVToColor(hsv))
-    }
 }

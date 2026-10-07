@@ -248,11 +248,11 @@ private fun AuralisRoot(
                                             painter = painterResource(tab.icon),
                                             contentDescription = tab.label,
                                             modifier = Modifier.size(24.dp),
-                                            tint = if (selected) p.onBackground else p.onBackground.copy(alpha = 0.38f),
+                                            tint = if (selected) p.primary else p.onBackground.copy(alpha = 0.38f),
                                         )
                                     },
                                     colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = p.onBackground,
+                                        selectedIconColor = p.primary,
                                         unselectedIconColor = p.onBackground.copy(alpha = 0.38f),
                                         indicatorColor = Color.Transparent,
                                     ),

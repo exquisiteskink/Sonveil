@@ -17,9 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -51,6 +49,7 @@ import app.sonveil.music.ui.components.GlassSurface
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.ThemeMode
+import app.sonveil.music.ui.theme.sonveilSliderColors
 
 @Composable
 fun SettingsScreen(
@@ -181,7 +180,7 @@ fun SettingsScreen(
                 container.signOut()
                 onLoggedOut()
             }) {
-                Text("Sign out", color = p.onBackground)
+                Text("Sign out")
             }
         }
 
@@ -197,7 +196,7 @@ fun SettingsScreen(
                     onClick = { onThemeMode(mode) },
                 )
             }
-            Hint("While music plays, backgrounds and the seek bar follow colors from the album art.")
+            Hint("While music plays, backgrounds, the seek bar, and buttons and switches follow colors from the album art.")
         }
 
         SettingsGroup("Playback") {
@@ -278,7 +277,7 @@ fun SettingsScreen(
                     onValueChangeFinished = { playerPrefs.crossfadeMs = fadeMs.toInt() },
                     valueRange = 1000f..12000f,
                     steps = 10,
-                    colors = SliderDefaults.colors(thumbColor = p.primary, activeTrackColor = p.primary),
+                    colors = sonveilSliderColors(),
                 )
             }
             ToggleRow(
@@ -338,10 +337,10 @@ fun SettingsScreen(
                 Text(dlState.message ?: "", color = p.onBackground.copy(alpha = 0.5f), fontSize = 12.sp)
             }
             TextButton(onClick = { downloads.refreshBytes() }) {
-                Text("Refresh size", color = p.onBackground)
+                Text("Refresh size")
             }
             TextButton(onClick = { downloads.clearDownloads() }) {
-                Text("Clear offline downloads", color = p.onBackground)
+                Text("Clear offline downloads")
             }
         }
 
@@ -377,7 +376,7 @@ fun SettingsScreen(
                             playerPrefs.deleteProfile(profile.id)
                             profiles = playerPrefs.deviceProfiles()
                         }) {
-                            Text("Remove", color = p.onBackground.copy(alpha = 0.7f))
+                            Text("Remove")
                         }
                     }
                 }
@@ -453,7 +452,7 @@ fun SettingsScreen(
                     playerPrefs.eqPreampGraphic = 0f
                     playerPrefs.eqPreset = "flat"
                     playerPrefs.eqHeadphoneName = ""
-                }) { Text("Flat", color = p.onBackground) }
+                }) { Text("Flat") }
             }
             if (eqOn && eqMode == EqMode.Parametric) {
                 Spacer(Modifier.height(8.dp))
@@ -470,7 +469,7 @@ fun SettingsScreen(
                         playerPrefs.eqPreampParametric = value
                     },
                     valueRange = -24f..12f,
-                    colors = SliderDefaults.colors(thumbColor = p.primary, activeTrackColor = p.primary),
+                    colors = sonveilSliderColors(),
                 )
                 if (eqFilters.isEmpty()) {
                     Hint("Search AutoEQ above, or add a band. Each band has frequency, gain, and Q.")
@@ -505,7 +504,7 @@ fun SettingsScreen(
                             eqOn = true
                             playerPrefs.eqEnabled = true
                         }
-                    }) { Text("Add band", color = p.onBackground) }
+                    }) { Text("Add band") }
                 }
             }
         }
@@ -524,10 +523,10 @@ fun SettingsScreen(
         SettingsGroup("Support Sonveil") {
             Hint("Donations are optional and help support development.")
             TextButton(onClick = { uriHandler.openUri("https://ko-fi.com/exquisiteskink") }) {
-                Text("Donate with Ko-fi", color = p.onBackground)
+                Text("Donate with Ko-fi")
             }
             TextButton(onClick = { uriHandler.openUri("https://liberapay.com/exquisiteskink/") }) {
-                Text("Donate with Liberapay", color = p.onBackground)
+                Text("Donate with Liberapay")
             }
         }
 
@@ -575,7 +574,6 @@ private fun RadioRow(selected: Boolean, label: String, onClick: () -> Unit) {
         RadioButton(
             selected = selected,
             onClick = onClick,
-            colors = RadioButtonDefaults.colors(selectedColor = p.primary),
         )
         Text(label, color = p.onBackground)
     }
@@ -602,7 +600,8 @@ private fun ToggleRow(
             checked = checked,
             onCheckedChange = onChecked,
             enabled = enabled,
-            colors = SwitchDefaults.colors(checkedThumbColor = p.primary, checkedTrackColor = p.primary.copy(alpha = 0.4f)),
+            // Stock M3 roles from the art scheme: checked track = primary, thumb = onPrimary.
+            colors = SwitchDefaults.colors(),
         )
     }
 }
@@ -617,13 +616,13 @@ private fun EqModeButton(
     val p = LocalPalette.current
     Text(
         label,
-        color = if (selected) p.background else p.onBackground,
+        color = if (selected) p.onPrimary else p.onBackground,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         textAlign = TextAlign.Center,
         modifier = modifier
             .background(
-                if (selected) p.onBackground else p.onBackground.copy(alpha = 0.12f),
+                if (selected) p.primary else p.onBackground.copy(alpha = 0.12f),
                 androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
             )
             .clickable(onClick = onClick)
