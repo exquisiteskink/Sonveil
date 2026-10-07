@@ -19,6 +19,24 @@ class ReplayGainProcessorTest {
     }
 
     @Test
+    fun albumModeUsesAlbumGainAndPeak() {
+        val gain = ReplayGainProcessor.computeLinearGain(ReplayGainMode.Album, -12f, -6f,
+            Float.NaN, Float.NaN, Float.NaN, false)
+        assertEquals(0.5012f, gain, 0.001f)
+        val limited = ReplayGainProcessor.computeLinearGain(ReplayGainMode.Album, -12f, 6f,
+            0.25f, 1.5f, Float.NaN, true)
+        assertEquals(0.99f / 1.5f, limited, 0.001f)
+    }
+
+    @Test
+    fun untaggedTrackUsesUnityAndMissingTrackGainFallsBackToAlbum() {
+        assertEquals(1f, ReplayGainProcessor.computeLinearGain(ReplayGainMode.Track,
+            Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, true), 0f)
+        assertEquals(0.5012f, ReplayGainProcessor.computeLinearGain(ReplayGainMode.Track,
+            Float.NaN, -6f, Float.NaN, Float.NaN, Float.NaN, false), 0.001f)
+    }
+
+    @Test
     fun off_isUnity() {
         assertEquals(
             1f,

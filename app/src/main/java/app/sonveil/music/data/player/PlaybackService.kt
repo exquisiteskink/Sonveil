@@ -1152,6 +1152,9 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         // the already-audible next track in the same frame as the promote.
         handler.post {
             runCatching {
+                pcmGates.remove(from)
+                pcmEqs.remove(from)
+                pcmGains.remove(from)
                 from.stop()
                 from.release()
             }
