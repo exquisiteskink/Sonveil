@@ -21,6 +21,63 @@ class OfflineTransferTest {
     private val http = OkHttpClient()
     private val audio = "ID3" + "a".repeat(1024)
 
+    @Test fun oversizedDeclaredAndChunkedBodiesAreNeverPublished(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            for (chunked in listOf(false, true)) {
+                val response = MockResponse().setHeader("Content-Type", "audio/mpeg")
+                if (chunked) response.setChunkedBody(audio, 128) else response.setBody(audio)
+                server.enqueue(response)
+                val target = temp.newFolder().resolve("oversized.mp3")
+                try {
+                    OfflineTransfer.download(
+                        http.newCall(Request.Builder().url(server.url("/")).build()), target, 0,
+                        limits = OfflineTransfer.Limits(maxBytes = 512, minFreeBytes = 0),
+                    ) { fail("Oversized download committed") }
+                    fail("Oversized download accepted")
+                } catch (_: IOException) { }
+                assertFalse(target.exists())
+                assertEquals(0, target.parentFile!!.listFiles()!!.size)
+            }
+        }
+    }
+
+    @Test fun storageReserveStopsTransferAndRemovesTemporaryFile(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setHeader("Content-Type", "audio/mpeg").setBody(audio))
+            server.start()
+            val target = temp.newFolder().resolve("reserve.mp3")
+            try {
+                OfflineTransfer.download(
+                    http.newCall(Request.Builder().url(server.url("/")).build()), target, 0,
+                    limits = OfflineTransfer.Limits(minFreeBytes = Long.MAX_VALUE - 65536),
+                ) { fail("Download crossed storage reserve") }
+                fail("Download ignored storage reserve")
+            } catch (_: IOException) { }
+            assertFalse(target.exists())
+            assertEquals(0, target.parentFile!!.listFiles()!!.size)
+        }
+    }
+
+    @Test fun overallDeadlineStopsBlockedTransferAndCleansUp(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+            server.start()
+            val target = temp.newFolder().resolve("timeout.mp3")
+            try {
+                withTimeout(5000) {
+                    OfflineTransfer.download(
+                        http.newCall(Request.Builder().url(server.url("/")).build()), target, 0,
+                        limits = OfflineTransfer.Limits(timeoutMillis = 250),
+                    ) { fail("Timed-out transfer committed") }
+                }
+                fail("Transfer ignored deadline")
+            } catch (_: IOException) { }
+            assertFalse(target.exists())
+            assertEquals(0, target.parentFile!!.listFiles()!!.size)
+        }
+    }
+
     @Test fun clearWaitsForBlockedTransferAndNothingReappears() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))

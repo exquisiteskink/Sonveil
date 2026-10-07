@@ -839,9 +839,8 @@ class PlayerController(
     }
 
     private fun Song.toMediaItem(): MediaItem {
-        val art = CoverArtContentProvider.contentUri(
-            coverArt, size = 800,
-            accountScope = client.credentials?.let { CoverArtContentProvider.accountScope(it, client.artworkNamespace) },
+        val art = CoverArtContentProvider.authorizedContentUri(
+            coverArt, 800, client.credentials, client.artworkNamespace,
         )
         val localUri = downloadStore?.let { store ->
             val creds = client.credentials ?: return@let null

@@ -2,6 +2,7 @@ package app.sonveil.music.data.download
 
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -14,8 +15,17 @@ import okhttp3.Call
 
 /** Joins blocking IO before returning, including on cancellation. Never publishes partial files. */
 internal object OfflineTransfer {
-    suspend fun download(call: Call, target: File, expectedSize: Long, storageBudget: Long = Long.MAX_VALUE, commit: (File) -> Unit) =
+    internal data class Limits(
+        val maxBytes: Long = 2L * 1024 * 1024 * 1024,
+        val minFreeBytes: Long = 128L * 1024 * 1024,
+        val timeoutMillis: Long = TimeUnit.MINUTES.toMillis(30),
+    )
+
+    suspend fun download(call: Call, target: File, expectedSize: Long, limits: Limits = Limits(), storageBudget: Long = Long.MAX_VALUE, commit: (File) -> Unit) =
         withContext(Dispatchers.IO) {
+            require(limits.maxBytes > 0 && limits.minFreeBytes >= 0 && limits.timeoutMillis > 0)
+            // Bound the whole call, even if a peer continuously sends small chunks.
+            call.timeout().timeout(limits.timeoutMillis, TimeUnit.MILLISECONDS)
             coroutineScope {
                 // Unconfined so cancellation closes a blocked socket immediately, not after read returns.
                 val cancellation = launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
@@ -27,6 +37,7 @@ internal object OfflineTransfer {
                     call.execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Download failed (HTTP ${response.code})")
                         val body = response.body ?: throw IOException("Empty download")
+                        if (body.contentLength() > limits.maxBytes) throw IOException("Download is too large")
                         if (body.contentLength() > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                         val type = body.contentType()?.let { "${it.type}/${it.subtype}" }.orEmpty().lowercase()
                         if (type.isNotEmpty() && !type.startsWith("audio/") && type !in setOf(
@@ -50,6 +61,10 @@ internal object OfflineTransfer {
                                 val count = input.read(buffer)
                                 if (count == -1) break
                                 bytes += count
+                                if (bytes > limits.maxBytes) throw IOException("Download is too large")
+                                if (tmp.parentFile!!.usableSpace < limits.minFreeBytes + count) {
+                                    throw IOException("Not enough free storage for download")
+                                }
                                 if (bytes > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                                 out.write(buffer, 0, count)
                             }

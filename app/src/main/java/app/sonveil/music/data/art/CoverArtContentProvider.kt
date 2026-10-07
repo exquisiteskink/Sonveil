@@ -44,9 +44,12 @@ class CoverArtContentProvider : ContentProvider() {
             ?: throw FileNotFoundException("App not ready")
         val container = app.container
         val credentials = container.client.credentials ?: throw FileNotFoundException("Not signed in")
-        if (parsed.accountScope != null &&
-            parsed.accountScope != accountScope(credentials, container.client.artworkNamespace)) {
-            throw FileNotFoundException("Artwork belongs to another account")
+        val namespace = container.client.artworkNamespace
+        val account = accountScope(credentials, namespace)
+        if (parsed.accountScope != account || !ArtworkAccess.permits(
+                namespace, account, parsed.coverId, parsed.size, uri.getQueryParameter("access"),
+            )) {
+            throw FileNotFoundException("Artwork access denied")
         }
 
         // Prefer client-only album override when cover id matches an album override key.
@@ -106,14 +109,26 @@ class CoverArtContentProvider : ContentProvider() {
          * Build a content URI for [coverId] without downloading.
          * Returns null when [coverId] is blank.
          */
-        fun contentUri(coverId: String?, size: Int = 400, accountScope: String? = null): Uri? {
+        fun contentUri(coverId: String?, size: Int = 400, accountScope: String? = null, accessToken: String? = null): Uri? {
             val path = buildEncodedPath(coverId, size) ?: return null
             return Uri.Builder()
                 .scheme(ContentResolver.SCHEME_CONTENT)
                 .authority(AUTHORITY)
                 .encodedPath(path)
-                .apply { if (accountScope != null) appendQueryParameter("account", accountScope) }
+                .apply {
+                    if (accountScope != null) appendQueryParameter("account", accountScope)
+                    if (accessToken != null) appendQueryParameter("access", accessToken)
+                }
                 .build()
+        }
+
+        /** Issued capabilities work with Auto's content-URI loader without broad caller permissions.
+         * URLs expire when the session namespace rotates on login/logout or process restart.
+         */
+        fun authorizedContentUri(coverId: String?, size: Int, credentials: StoredCredentials?, namespace: String): Uri? {
+            if (coverId.isNullOrBlank() || credentials == null) return null
+            val account = accountScope(credentials, namespace)
+            return contentUri(coverId, size, account, ArtworkAccess.token(namespace, account, coverId, size))
         }
 
         fun parse(uri: Uri): CoverRef? {

@@ -1,6 +1,8 @@
 package app.sonveil.music.data.remote
 
+import app.sonveil.music.data.auth.StoredCredentials
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -43,6 +45,23 @@ fun requireAllowedServerUrl(url: HttpUrl) {
         }
         else -> throw SubsonicException(0, "Server URL must be http or https")
     }
+}
+
+fun requireAllowedAuthenticatedUrl(url: HttpUrl, credentials: StoredCredentials) {
+    requireAllowedServerUrl(url)
+    if (url.scheme == "http" && !credentials.allowInsecureLanHttp) {
+        throw SubsonicException(0, "HTTPS is required. To use a LAN HTTP server, explicitly allow insecure HTTP on the sign-in screen.")
+    }
+}
+
+/** Server-supplied artwork may only contact the configured music-server origin. */
+fun allowedArtworkUrl(value: String?, serverUrl: String?): String? {
+    val url = value?.let { runCatching { it.toHttpUrl() }.getOrNull() } ?: return null
+    val server = serverUrl?.let { runCatching { it.toHttpUrl() }.getOrNull() } ?: return null
+    return url.takeIf {
+        it.username.isEmpty() && it.password.isEmpty() &&
+            it.scheme == server.scheme && it.host == server.host && it.port == server.port
+    }?.toString()
 }
 
 fun buildHttpClient(): OkHttpClient {
