@@ -21,6 +21,25 @@ class OfflineTransferTest {
     private val http = OkHttpClient()
     private val audio = "ID3" + "a".repeat(1024)
 
+    @Test fun aggregateQuotaRejectsDeclaredAndChunkedBodies(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            for (chunked in listOf(false, true)) {
+                val response = MockResponse().setHeader("Content-Type", "audio/mpeg")
+                if (chunked) response.setChunkedBody(audio, 128) else response.setBody(audio)
+                server.enqueue(response)
+                val target = temp.newFolder().resolve("quota.mp3")
+                try {
+                    OfflineTransfer.download(http.newCall(Request.Builder().url(server.url("/")).build()),
+                        target, 0, storageBudget = 512) { fail("Over-quota download committed") }
+                    fail("Over-quota download accepted")
+                } catch (_: IOException) { }
+                assertFalse(target.exists())
+                assertEquals(0, target.parentFile!!.listFiles()!!.size)
+            }
+        }
+    }
+
     @Test fun oversizedDeclaredAndChunkedBodiesAreNeverPublished(): Unit = runBlocking {
         MockWebServer().use { server ->
             server.start()
