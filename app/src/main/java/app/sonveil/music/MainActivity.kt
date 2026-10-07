@@ -1,6 +1,5 @@
 package app.sonveil.music
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -49,7 +48,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -78,22 +76,15 @@ import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.data.player.AuralisPalette
-import app.sonveil.music.data.player.auto.AutoVoiceSearch
-import app.sonveil.music.data.remote.suspendRunCatching
 import app.sonveil.music.ui.theme.ThemeMode
 import app.sonveil.music.ui.theme.sonveilGlass
 import androidx.compose.runtime.CompositionLocalProvider
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        if (intent?.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH") {
-            playFromSearchIntent(intent)
-        }
-        if (intent?.action != "android.media.action.MEDIA_PLAY_FROM_SEARCH" &&
-            android.os.Build.VERSION.SDK_INT >= 33) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
                 android.content.pm.PackageManager.PERMISSION_GRANTED
             ) {
@@ -167,29 +158,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        if (intent.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH") {
-            playFromSearchIntent(intent)
-        }
-    }
 
-    private fun playFromSearchIntent(intent: Intent?) {
-        val request = intent ?: return
-        val container = (application as AuralisApp).container
-        lifecycleScope.launch {
-            container.restoreSession()
-            if (container.client.credentials == null) return@launch
-            val songs = suspendRunCatching {
-                AutoVoiceSearch(container.client).songs(
-                    request.getStringExtra(android.app.SearchManager.QUERY).orEmpty(),
-                    request.extras,
-                )
-            }.getOrDefault(emptyList())
-            if (songs.isNotEmpty()) container.player.play(songs)
-        }
-    }
 }
 
 @Composable

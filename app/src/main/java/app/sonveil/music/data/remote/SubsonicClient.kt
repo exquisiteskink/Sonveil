@@ -38,7 +38,9 @@ class SubsonicClient(
     var credentials: StoredCredentials? = null
 
     /** Private random namespace prevents artwork URIs from revealing credential hashes. */
-    internal val artworkNamespace: String = randomSalt(32)
+    @Volatile
+    internal var artworkNamespace: String = randomSalt(32)
+        private set
 
     /**
      * Stable salt for cover-art URLs so Coil can cache within a session.
@@ -60,6 +62,7 @@ class SubsonicClient(
 
     fun rotateSessionSalt() {
         sessionSalt = randomSalt()
+        artworkNamespace = randomSalt(32)
     }
 
     suspend fun ping(): ServerInfo {
@@ -80,7 +83,7 @@ class SubsonicClient(
     suspend fun login(candidate: StoredCredentials): Pair<StoredCredentials, ServerInfo> {
         val url = runCatching { candidate.serverUrl.trim().trimEnd('/').toHttpUrl() }
             .getOrElse { throw SubsonicException(0, "Invalid server URL") }
-        requireAllowedServerUrl(url)
+        requireAllowedAuthenticatedUrl(url, candidate)
         val result = try {
             val info = ping(candidate)
             candidate to info
@@ -313,7 +316,7 @@ class SubsonicClient(
         creds: StoredCredentials = credentials ?: throw SubsonicException(40, "Not signed in"),
     ): HttpUrl {
         val root = creds.serverUrl.trim().trimEnd('/').toHttpUrl()
-        requireAllowedServerUrl(root)
+        requireAllowedAuthenticatedUrl(root, creds)
         if (creds.authMode == AuthMode.HexPassword && root.scheme != "https") {
             throw SubsonicException(41, "Password authentication requires HTTPS")
         }

@@ -59,6 +59,15 @@ class AppContainer(context: Context) {
             _authResolved.value = true
             return@withLock
         }
+        // Older HTTP accounts must consent before any authenticated network request.
+        // Keep the encrypted account so Login can prefill it, without silently opting in.
+        if (stored.serverUrl.startsWith("http://", ignoreCase = true) && !stored.allowInsecureLanHttp) {
+            client.credentials = null
+            restored = true
+            setLoggedIn(false)
+            _authResolved.value = true
+            return@withLock
+        }
         // Credentials were saved only after a successful login. Prefer the app shell
         // (or a brief splash) over Login while we validate — never loop Login on valid store.
         client.credentials = stored

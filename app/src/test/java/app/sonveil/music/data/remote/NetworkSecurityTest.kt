@@ -12,6 +12,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NetworkSecurityTest {
+    @Test fun artworkCannotTargetAnotherOrigin() {
+        val server = "https://music.example/library"
+        assertEquals("https://music.example/art?id=1", allowedArtworkUrl("https://music.example/art?id=1", server))
+        for (url in listOf("http://music.example/art", "https://music.example:8443/art", "https://tracker.example/art",
+                "http://127.0.0.1/action", "http://192.168.1.1/action", "https://user:pass@music.example/art", "file:///etc/passwd")) {
+            assertNull(url, allowedArtworkUrl(url, server))
+        }
+        assertNull(allowedArtworkUrl("https://music.example/art", null))
+        assertEquals("http://192.168.1.2/art", allowedArtworkUrl("http://192.168.1.2/art", "http://192.168.1.2"))
+    }
+
     @Test fun publicNamesCannotMasqueradeAsPrivateIpv6() {
         listOf("fc-attacker.example", "fd.example", "8.8.8.8", "172.32.0.1", "2001:4860:4860::8888").forEach {
             assertFalse(it, isLanHost(it))

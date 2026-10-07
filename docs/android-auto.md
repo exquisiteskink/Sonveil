@@ -23,8 +23,8 @@ Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** 
    - `android.media.browse.MediaBrowserService`
 3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs) do not require login.
 4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build.
-5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
-6. Assistant and Gemini play-from-search requests resolve through `AutoVoiceSearch` using the signed-in Subsonic library. Empty requests play favorites or the latest recent album; explicit song, album, artist, playlist and genre requests use the matching server APIs. The phone activity also handles the legacy `MEDIA_PLAY_FROM_SEARCH` intent.
+5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` using signed capabilities for each account, cover and size (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
+6. Assistant and Gemini play-from-search requests resolve through `AutoVoiceSearch` using the signed-in Subsonic library. Empty requests play favorites or the latest recent album; explicit song, album, artist, playlist and genre requests use the matching server APIs. Voice playback must use the media service and pass its controller authorization; the phone activity does not execute legacy `MEDIA_PLAY_FROM_SEARCH` intents.
 
 Car App Library (`androidx.car.app`) is **not** required for drawer presence for media apps.
 

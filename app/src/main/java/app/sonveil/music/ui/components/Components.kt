@@ -73,10 +73,10 @@ import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.ui.theme.sonveilGlass
+import app.sonveil.music.data.remote.allowedArtworkUrl
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 
 /** Soft press scale — keeps ripple via default [clickable] indication. */
@@ -125,9 +125,7 @@ fun CoverArt(
     val p = LocalPalette.current
     val credentials = client.credentials
     val sources = remember(client, credentials, coverId, imageUrl, localUri) {
-        val url = imageUrl?.toHttpUrlOrNull()?.takeIf {
-            it.username.isEmpty() && it.password.isEmpty()
-        }?.toString()
+        val url = allowedArtworkUrl(imageUrl, credentials?.serverUrl)
         listOfNotNull(localUri, url, client.coverUrl(coverId, 600)).distinct()
     }
     var sourceIndex by remember(sources, localCacheKey) { mutableStateOf(0) }

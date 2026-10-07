@@ -17,12 +17,32 @@ class SubsonicClientTest {
     private val ok = """{"subsonic-response":{"status":"ok","version":"1.16.1"}}"""
     private fun failure(code: Int) = """{"subsonic-response":{"status":"failed","error":{"code":$code}}}"""
 
+    @Test fun httpAuthenticationRequiresExplicitConsent(): Unit = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            for (mode in listOf(AuthMode.Token, AuthMode.ApiKey)) {
+                val client = SubsonicClient()
+                val credentials = StoredCredentials(server.url("/").toString(), "user", "password", apiKey = "secret", authMode = mode)
+                try {
+                    client.login(credentials)
+                    fail("HTTP login must require consent")
+                } catch (_: SubsonicException) { }
+                assertNull(client.credentials)
+                client.credentials = credentials
+                assertThrows(SubsonicException::class.java) { client.streamUrl("song") }
+                assertThrows(SubsonicException::class.java) { client.downloadUrl("song") }
+                assertThrows(SubsonicException::class.java) { client.coverUrl("cover", 400) }
+            }
+            assertEquals(0, server.requestCount)
+        }
+    }
+
     @Test fun cancelledLyricsDoesNotStartFallbackRequest(): Unit = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
             server.start()
             val client = SubsonicClient()
-            client.credentials = StoredCredentials(server.url("/").toString(), "user", "password")
+            client.credentials = StoredCredentials(server.url("/").toString(), "user", "password", allowInsecureLanHttp = true)
             val job = launch(Dispatchers.Default) {
                 try {
                     client.lyricsForSong(Song(id = "song", title = "Track", artist = "Artist"))
@@ -40,7 +60,7 @@ class SubsonicClientTest {
             server.enqueue(MockResponse().setBody(ok))
             server.start()
             val client = SubsonicClient()
-            val creds = StoredCredentials(server.url("/music").toString(), "listener", "pässword")
+            val creds = StoredCredentials(server.url("/music").toString(), "listener", "pässword", allowInsecureLanHttp = true)
             client.login(creds)
             val url = server.takeRequest().requestUrl!!
             assertEquals("/music/rest/ping", url.encodedPath)
@@ -58,11 +78,11 @@ class SubsonicClientTest {
             server.enqueue(MockResponse().setBody(failure(41)))
             server.start()
             val client = SubsonicClient()
-            try { client.login(StoredCredentials(server.url("/").toString(), "user", "password")); fail() }
+            try { client.login(StoredCredentials(server.url("/").toString(), "user", "password", allowInsecureLanHttp = true)); fail() }
             catch (e: SubsonicException) { assertEquals(41, e.code) }
             assertNull(client.credentials)
             assertEquals(1, server.requestCount)
-            client.credentials = StoredCredentials(server.url("/").toString(), "user", "password", authMode = AuthMode.HexPassword)
+            client.credentials = StoredCredentials(server.url("/").toString(), "user", "password", authMode = AuthMode.HexPassword, allowInsecureLanHttp = true)
             assertThrows(SubsonicException::class.java) { client.streamUrl("1") }
         }
     }
@@ -113,7 +133,7 @@ class SubsonicClientTest {
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
             server.start()
             val client = SubsonicClient()
-            val job = launch(Dispatchers.Default) { client.login(StoredCredentials(server.url("/").toString(), "user", "password")) }
+            val job = launch(Dispatchers.Default) { client.login(StoredCredentials(server.url("/").toString(), "user", "password", allowInsecureLanHttp = true)) }
             assertNotNull(withContext(Dispatchers.IO) { server.takeRequest(3, TimeUnit.SECONDS) })
             withTimeout(2000) { job.cancelAndJoin() }
             assertNull(client.credentials)
@@ -126,7 +146,7 @@ class SubsonicClientTest {
             server.enqueue(MockResponse().setChunkedBody("x".repeat(SubsonicClient.MAX_RESPONSE_BYTES.toInt() + 1), 8192))
             server.start()
             val client = SubsonicClient()
-            try { client.login(StoredCredentials(server.url("/").toString(), "user", "password")); fail() }
+            try { client.login(StoredCredentials(server.url("/").toString(), "user", "password", allowInsecureLanHttp = true)); fail() }
             catch (e: SubsonicException) { assertEquals("Server response is too large", e.message) }
             assertNull(client.credentials)
         }
