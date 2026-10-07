@@ -11,6 +11,16 @@
     <!-- Package visibility (API 30+): allow detecting external EQs for Option B
          dual-player crossfade gate. Without this, getPackageInfo always misses. -->
     <queries>
+        <package android:name="com.google.android.gms" />
+        <package android:name="com.android.vending" />
+        <package android:name="com.google.android.projection.gearhead" />
+        <package android:name="com.android.car.media" />
+        <package android:name="com.android.car.carlauncher" />
+        <package android:name="com.google.android.car.media" />
+        <package android:name="com.google.android.carassistant" />
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <package android:name="com.google.android.as" />
+        <package android:name="com.google.android.apps.googleassistant" />
         <package android:name="com.maxmpz.equalizer" />
         <package android:name="com.pittvandewitt.wavelet" />
         <package android:name="com.mistersomov.wavelet" />

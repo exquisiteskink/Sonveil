@@ -14,7 +14,7 @@ import okhttp3.Call
 
 /** Joins blocking IO before returning, including on cancellation. Never publishes partial files. */
 internal object OfflineTransfer {
-    suspend fun download(call: Call, target: File, expectedSize: Long, commit: (File) -> Unit) =
+    suspend fun download(call: Call, target: File, expectedSize: Long, storageBudget: Long = Long.MAX_VALUE, commit: (File) -> Unit) =
         withContext(Dispatchers.IO) {
             coroutineScope {
                 // Unconfined so cancellation closes a blocked socket immediately, not after read returns.
@@ -27,6 +27,7 @@ internal object OfflineTransfer {
                     call.execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Download failed (HTTP ${response.code})")
                         val body = response.body ?: throw IOException("Empty download")
+                        if (body.contentLength() > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                         val type = body.contentType()?.let { "${it.type}/${it.subtype}" }.orEmpty().lowercase()
                         if (type.isNotEmpty() && !type.startsWith("audio/") && type !in setOf(
                                 "application/octet-stream", "binary/octet-stream", "application/ogg", "video/mp4")) {
@@ -43,10 +44,13 @@ internal object OfflineTransfer {
                         tmp.outputStream().use { out ->
                             val buffer = ByteArray(64 * 1024)
                             val input = body.byteStream()
+                            var bytes = 0L
                             while (true) {
                                 currentCoroutineContext().ensureActive()
                                 val count = input.read(buffer)
                                 if (count == -1) break
+                                bytes += count
+                                if (bytes > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                                 out.write(buffer, 0, count)
                             }
                         }
