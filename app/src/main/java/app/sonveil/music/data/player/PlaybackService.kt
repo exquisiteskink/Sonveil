@@ -218,6 +218,10 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
                 // Skip/album/auto: mute before any RG→volume=1f. CF promote uses
                 // finishCrossfade (no transition on the promoted player).
                 if (fading) return
+                // Prime the new track before either the anchored path or a bind wait
+                // can buffer PCM. The DVC path must not queue the previous track's gain.
+                rgLinear = ReplayGainProcessor.fromExtras(mediaItem?.mediaMetadata?.extras, settings.replayGainMode, settings.peakLimiter)
+                setPcmGain(exo, rgLinear)
                 // Without an external EQ there is no session to rebind. Muting here
                 // fades in every track and breaks gapless playback.
                 if (!dualPlayerCfBlocked || canContinueThroughAnchoredTransition(exo)) {
