@@ -70,6 +70,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
     private var fadePlayer: ExoPlayer? = null
     private val pcmGates = IdentityHashMap<ExoPlayer, DvcPcmGate>()
     private val pcmEqs = IdentityHashMap<ExoPlayer, GraphicEqProcessor>()
+    private val pcmGains = IdentityHashMap<ExoPlayer, ReplayGainProcessor>()
     private var session: MediaLibraryService.MediaLibrarySession? = null
     private var libraryCallback: AutoLibraryCallback? = null
     private val eqMain = EqController()
@@ -219,6 +220,10 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
                 // Skip/album/auto: mute before any RG→volume=1f. CF promote uses
                 // finishCrossfade (no transition on the promoted player).
                 if (fading) return
+                // Prime the new track before either the anchored path or a bind wait
+                // can buffer PCM. The DVC path must not queue the previous track's gain.
+                rgLinear = ReplayGainProcessor.fromExtras(mediaItem?.mediaMetadata?.extras, settings.replayGainMode, settings.peakLimiter)
+                setPcmGain(exo, rgLinear)
                 // Without an external EQ there is no session to rebind. Muting here
                 // fades in every track and breaks gapless playback.
                 if (!dualPlayerCfBlocked || canContinueThroughAnchoredTransition(exo)) {
@@ -538,6 +543,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         fadePlayer?.release()
         pcmGates.clear()
         pcmEqs.clear()
+        pcmGains.clear()
         eqMain.release()
         eqFade.release()
         session = null
@@ -557,6 +563,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         val gate = DvcPcmGate { flushed -> handler.post { onPcmGateFlushed(flushed) } }.apply {
             if (dualPlayerCfBlocked) enable() else disable()
         }
+        val gain = ReplayGainProcessor()
         val tone = GraphicEqProcessor().apply { setProgram(EqProgram.from(settings)) }
         val renderers = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -564,7 +571,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
             ): AudioSink = DefaultAudioSink.Builder(context)
-                .setAudioProcessors(arrayOf(tone, gate))
+                .setAudioProcessors(arrayOf(gain, tone, gate))
                 .setEnableFloatOutput(false)
                 .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                 .build()
@@ -593,6 +600,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             .build()
         pcmGates[exo] = gate
         pcmEqs[exo] = tone
+        pcmGains[exo] = gain
         if (stickySessionId != 0) {
             exo.setAudioSessionId(stickySessionId)
             Log.d(TAG, "setAudioSessionId($stickySessionId) on new ExoPlayer")
@@ -902,43 +910,25 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             SESSION_SETTLE_MS
         }
 
-    /**
-     * Prefer DynamicsProcessing input gain for ReplayGain (same platform path as EQ).
-     * Keep [ExoPlayer.setVolume] at 1f whenever possible so Poweramp EQ DVC (and similar
-     * external equalizers) are not fighting abrupt AudioTrack volume snaps on skip.
-     * Fallback (no DP): short smooth ramp of player volume — never a hard set.
-     */
+    /** Apply gain once in PCM; AudioTrack volume is reserved for mute/settle and fades. */
     private fun applyReplayGain(exo: ExoPlayer, item: MediaItem?, eq: EqController) {
-        if (fading || sessionBindPending) return
-        rgLinear = ReplayGainProcessor.fromExtras(
-            item?.mediaMetadata?.extras,
-            settings.replayGainMode,
-            settings.peakLimiter,
-        )
-        if (dualPlayerCfBlocked) {
-            // Poweramp owns the session's platform effects and DVC gain. Keep
-            // our ReplayGain in decoded PCM. A long pause may have muted the
-            // dormant AudioTrack before releasing the session anchor.
-            pcmGates[exo]?.setReplayGain(rgLinear.coerceIn(0.05f, 4f))
-            if (exo.volume < 0.99f) setPlayerVolumeSmooth(exo, 1f)
-            return
+        if (fading) return
+        rgLinear = ReplayGainProcessor.fromExtras(item?.mediaMetadata?.extras, settings.replayGainMode, settings.peakLimiter)
+        // Audio may be decoded and queued while the AudioTrack is muted. Apply gain
+        // before that buffering begins, so unmuting cannot reveal a unity-gain burst.
+        setPcmGain(exo, rgLinear)
+        if (sessionBindPending) return
+        eq.applyReplayGainLinear(1f, settings)
+        if (abs(exo.volume - 1f) >= 0.01f) {
+            if (exo.volume < 0.5f) setPlayerVolumeSmooth(exo, 1f) else exo.volume = 1f
         }
-        val viaEffect = eq.applyReplayGainLinear(rgLinear, settings)
-        if (viaEffect) {
-            // DVC path: target AudioTrack volume = unity. Never hard-snap from a
-            // muted / low level to 1f (blast if PA still unbound). Ramp from low;
-            // only snap when already near unity (avoid fighting PA with a ramp).
-            volumeAnim?.cancel()
-            volumeAnim = null
-            if (abs(exo.volume - 1f) >= 0.01f) {
-                if (exo.volume < 0.5f) {
-                    setPlayerVolumeSmooth(exo, 1f)
-                } else {
-                    exo.volume = 1f
-                }
-            }
-        } else {
-            setPlayerVolumeSmooth(exo, replayGainToPlayerVolume(rgLinear))
+    }
+
+    private fun setPcmGain(exo: ExoPlayer, linear: Float) {
+        pcmGates[exo]?.setReplayGain(1f)
+        pcmGains[exo]?.let {
+            it.linearGain = linear
+            it.limiter = settings.peakLimiter && settings.replayGainMode != ReplayGainMode.Off
         }
     }
 
@@ -1065,6 +1055,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             settings.replayGainMode,
             settings.peakLimiter,
         )
+        setPcmGain(next, pendingNextLinear)
         applyDisconnectPolicy(next)
         if (sharedSession != 0 && next.audioSessionId == sharedSession) {
             // eqMain already owns DynamicsProcessing + OPEN broadcast on this session.
@@ -1108,26 +1099,10 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         volumeAnim = null
 
         val nextLinear = pendingNextLinear
-        val sharedSession =
-            next.audioSessionId != 0 && next.audioSessionId == from.audioSessionId
-
-        val nextGain: Float
-        val fromGain: Float
-        if (sharedSession) {
-            // One DynamicsProcessing on the shared session cannot carry two different
-            // ReplayGain values. Park DP at unity and bake RG into the volume envelope
-            // for the overlap only; promote restores RG to DP and volume to 1f.
-            fromGain = replayGainToPlayerVolume(rgLinear)
-            nextGain = replayGainToPlayerVolume(nextLinear)
-            from.volume = fromGain
-            eqMain.applyReplayGainLinear(1f, settings)
-        } else {
-            // Separate-session fallback: keep RG on each player's effect; envelope is mix-only.
-            val nextViaEffect = eqFade.applyReplayGainLinear(nextLinear, settings)
-            eqMain.applyReplayGainLinear(rgLinear, settings)
-            nextGain = if (nextViaEffect) 1f else replayGainToPlayerVolume(nextLinear)
-            fromGain = from.volume.coerceIn(0.05f, 1f)
-        }
+        setPcmGain(from, rgLinear)
+        setPcmGain(next, nextLinear)
+        val fromGain = from.volume.coerceIn(0f, 1f)
+        val nextGain = 1f
 
         from.pauseAtEndOfMediaItems = true
         // Secondary was built without audio focus — both players can be audible together.
@@ -1191,6 +1166,9 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         // the already-audible next track in the same frame as the promote.
         handler.post {
             runCatching {
+                pcmGates.remove(from)
+                pcmEqs.remove(from)
+                pcmGains.remove(from)
                 from.stop()
                 from.release()
             }
@@ -1230,6 +1208,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         fadePlayer?.let {
             pcmGates.remove(it)
             pcmEqs.remove(it)
+            pcmGains.remove(it)
             it.stop()
             it.release()
         }
@@ -1294,6 +1273,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         fadePlayer?.let {
             pcmGates.remove(it)
             pcmEqs.remove(it)
+            pcmGains.remove(it)
             it.stop()
             it.release()
         }
