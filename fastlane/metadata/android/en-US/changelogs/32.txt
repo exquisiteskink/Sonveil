@@ -1,0 +1,1 @@
+ReplayGain now adjusts decoded PCM, fixing robotic sound and loud starts on tagged tracks. Off, Track and Album modes remain available. Protect artwork access, verify Android Auto hosts, keep stream credentials out of session URIs, and require explicit consent for LAN HTTP. Bound offline downloads and artwork imports.

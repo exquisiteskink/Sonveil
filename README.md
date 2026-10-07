@@ -29,7 +29,7 @@ Captured on a Galaxy Z Fold 6. Artwork comes from the connected music server.
 
 ## Features
 
-Verified against the current codebase (v1.3.11):
+Verified against the current codebase (v1.3.12):
 
 ### Library & playback
 - Browse albums, artists, playlists, favorites, and genres; search songs, artists, albums, and genres

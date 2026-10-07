@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.12 — 2026-10-06
+
+### Fixed
+- Apply Track/Album ReplayGain in decoded PCM with native sample byte order, without enabling DynamicsProcessing for gain tags.
+- Set gain before startup buffering to prevent an initial loud burst; keep independent gain during crossfades.
+- Ignore malformed peak tags that previously suppressed playback volume.
+
+### Changed
+- Sign account-scoped artwork capabilities and restrict server artwork URLs to the configured origin.
+- Require explicit consent for authenticated LAN HTTP while retaining saved account fields.
+- Verify Android Auto, Automotive, and Assistant host identity and resolve authenticated stream URLs inside the player.
+- Bound downloads to 2 GiB per file and 32 GiB total storage, retain 128 MiB free space, and enforce a 30-minute request deadline.
+- Limit local artwork imports to 8 MiB and route voice playback through the authorized media service.
+
+### Validation
+- 116 unit tests and 11 release device tests passed; lint reports no errors.
+- Galaxy Z Fold6 playback, artwork, ReplayGain, and pause/resume checks passed, including the Shinedown regression. A connected car and external Poweramp EQ/Wavelet were not tested.
+
 ## 1.3.11 — 2026-10-01
 
 ### Fixed
