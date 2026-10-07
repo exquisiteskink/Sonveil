@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -21,7 +22,10 @@
 
     <!-- Android Auto drawer presence: MediaLibraryService + MediaBrowserService
          intent + com.google.android.gms.car.application → automotive_app_desc media. -->
+    <!-- Voice search uses authorized MediaLibrarySession callbacks. Do not export a
+         direct MEDIA_PLAY_FROM_SEARCH intent that bypasses controller authentication. -->
     <application
+        tools:ignore="MissingIntentFilterForMediaSearch"
         android:name=".AuralisApp"
         android:appCategory="audio"
         android:allowBackup="false"
