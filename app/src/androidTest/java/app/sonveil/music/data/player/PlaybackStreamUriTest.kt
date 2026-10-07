@@ -17,6 +17,7 @@ class PlaybackStreamUriTest {
 
     @Test fun installedAndroidAutoPassesHostVerification() {
         val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        org.junit.Assume.assumeTrue(runCatching { context.packageManager.getPackageInfo("com.google.android.projection.gearhead", 0) }.isSuccess)
         val host = app.sonveil.music.data.player.auto.AutoClientGate.lookup(context, "com.google.android.projection.gearhead")
         assertEquals("com.google.android.projection.gearhead", host.packageName)
         org.junit.Assert.assertTrue("Installed Android Auto should be recognized by signer/system identity", host.trustedHost)
