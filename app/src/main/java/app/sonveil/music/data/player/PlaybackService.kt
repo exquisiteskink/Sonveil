@@ -20,6 +20,8 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.ResolvingDataSource
+import app.sonveil.music.data.player.auto.AutoClientGate
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -161,7 +163,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             putString("app_name", "Sonveil")
         }
         val app = application as AuralisApp
-        val callback = AutoLibraryCallback(app.container, app.container.player, packageName)
+        val callback = AutoLibraryCallback(app.container, app.container.player, packageName) { pkg -> AutoClientGate.lookup(this, pkg) }
         libraryCallback = callback
         val guarded = guardedPlayer(exo)
         session = MediaLibraryService.MediaLibrarySession.Builder(this, guarded, callback)
@@ -438,8 +440,8 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         if (scheme == "file" || scheme == "content") return item
         val client = (application as AuralisApp).container.client
         if (client.credentials == null) return item
-        val maxBr = uri.getQueryParameter("maxBitRate")?.toIntOrNull() ?: 0
-        return item.buildUpon().setUri(client.streamUrl(id, maxBr)).build()
+        val maxBr = if (PlaybackStreamUri.songId(uri) != null) PlaybackStreamUri.bitrate(uri) else uri.getQueryParameter("maxBitRate")?.toIntOrNull() ?: 0
+        return item.buildUpon().setUri(PlaybackStreamUri.build(id, maxBr, java.util.UUID.randomUUID().toString())).build()
     }
 
     private fun cancelErrorRetryCallback() {
@@ -570,7 +572,12 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         val exo = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(this)
-                    .setDataSourceFactory(DefaultDataSource.Factory(this, http)),
+                    .setDataSourceFactory(ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
+                        val id = PlaybackStreamUri.songId(spec.uri)
+                        if (id == null) spec else spec.withUri(android.net.Uri.parse(
+                            (application as AuralisApp).container.client.streamUrl(id, PlaybackStreamUri.bitrate(spec.uri)),
+                        ))
+                    }),
             )
             .setLoadControl(
                 DefaultLoadControl.Builder()

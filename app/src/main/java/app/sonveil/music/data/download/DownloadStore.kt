@@ -156,6 +156,8 @@ class DownloadStore internal constructor(private val root: File) {
         pendingFile(key).delete()
     }
 
+    fun totalBytesUsed(): Long = root.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+
     fun bytesUsed(key: String): Long {
         val dir = songsDir(key)
         if (!dir.isDirectory) return 0L

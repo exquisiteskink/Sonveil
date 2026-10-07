@@ -87,6 +87,7 @@ class ArtOverrideStore internal constructor(
     @Synchronized
     private fun writeBytes(dir: File, id: String, bytes: ByteArray) {
         require(bytes.isNotEmpty()) { "empty image bytes" }
+        require(bytes.size <= MAX_IMAGE_BYTES) { "Artwork is too large (maximum 8 MiB)" }
         val target = fileFor(dir, id)
         val tmp = File.createTempFile("override-", ".tmp", dir)
         try {
@@ -101,7 +102,15 @@ class ArtOverrideStore internal constructor(
     private fun writeUri(dir: File, id: String, uri: Uri) {
         openInputStream(uri).use { input ->
             requireNotNull(input) { "cannot open image" }
-            writeBytes(dir, id, input.readBytes())
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                require(output.size().toLong() + count <= MAX_IMAGE_BYTES) { "Artwork is too large (maximum 8 MiB)" }
+                output.write(buffer, 0, count)
+            }
+            writeBytes(dir, id, output.toByteArray())
         }
     }
 
@@ -109,6 +118,7 @@ class ArtOverrideStore internal constructor(
         File(dir, sanitizeId(id) + ".jpg")
 
     companion object {
+        internal const val MAX_IMAGE_BYTES = 8 * 1024 * 1024
         fun sanitizeId(id: String): String =
             MessageDigest.getInstance("SHA-256").digest(id.toByteArray(Charsets.UTF_8))
                 .joinToString("") { "%02x".format(it) }

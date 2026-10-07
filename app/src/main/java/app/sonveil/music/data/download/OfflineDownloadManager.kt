@@ -221,7 +221,7 @@ class OfflineDownloadManager(
 
     private suspend fun downloadOne(key: String, song: Song, creds: StoredCredentials) {
         val request = Request.Builder().url(client.downloadUrl(song.id, creds)).get().build()
-        OfflineTransfer.download(client.http.newCall(request), store.targetFile(key, song), song.size) { file ->
+        OfflineTransfer.download(client.http.newCall(request), store.targetFile(key, song), song.size, storageBudget = (32L * 1024 * 1024 * 1024 - store.totalBytesUsed()).coerceAtLeast(0L)) { file ->
             check(client.credentials == creds) { "Account changed" }
             store.markDownloaded(key, song, file)
         }

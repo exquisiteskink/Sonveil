@@ -21,7 +21,7 @@ internal object OfflineTransfer {
         val timeoutMillis: Long = TimeUnit.MINUTES.toMillis(30),
     )
 
-    suspend fun download(call: Call, target: File, expectedSize: Long, limits: Limits = Limits(), commit: (File) -> Unit) =
+    suspend fun download(call: Call, target: File, expectedSize: Long, limits: Limits = Limits(), storageBudget: Long = Long.MAX_VALUE, commit: (File) -> Unit) =
         withContext(Dispatchers.IO) {
             require(limits.maxBytes > 0 && limits.minFreeBytes >= 0 && limits.timeoutMillis > 0)
             // Bound the whole call, even if a peer continuously sends small chunks.
@@ -38,6 +38,7 @@ internal object OfflineTransfer {
                         if (!response.isSuccessful) throw IOException("Download failed (HTTP ${response.code})")
                         val body = response.body ?: throw IOException("Empty download")
                         if (body.contentLength() > limits.maxBytes) throw IOException("Download is too large")
+                        if (body.contentLength() > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                         val type = body.contentType()?.let { "${it.type}/${it.subtype}" }.orEmpty().lowercase()
                         if (type.isNotEmpty() && !type.startsWith("audio/") && type !in setOf(
                                 "application/octet-stream", "binary/octet-stream", "application/ogg", "video/mp4")) {
@@ -64,6 +65,7 @@ internal object OfflineTransfer {
                                 if (tmp.parentFile!!.usableSpace < limits.minFreeBytes + count) {
                                     throw IOException("Not enough free storage for download")
                                 }
+                                if (bytes > storageBudget) throw IOException("Offline storage limit reached (32 GiB)")
                                 out.write(buffer, 0, count)
                             }
                         }

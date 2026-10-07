@@ -24,6 +24,17 @@ class ArtOverrideStoreTest {
         assertTrue(store.hasAlbumOverride("a?b"))
     }
 
+    @Test fun oversizedImportPreservesExistingArtwork() {
+        val root = temp.newFolder()
+        val store = ArtOverrideStore(root)
+        store.setAlbumOverride("album", byteArrayOf(1, 2, 3))
+        assertThrows(IllegalArgumentException::class.java) {
+            store.setAlbumOverride("album", ByteArray(ArtOverrideStore.MAX_IMAGE_BYTES + 1))
+        }
+        assertArrayEquals(byteArrayOf(1, 2, 3), root.resolve("album/${ArtOverrideStore.sanitizeId("album")}.jpg").readBytes())
+        assertEquals(1L, store.revisions.value[store.albumRevisionKey("album")])
+    }
+
     @Test fun completeIdsHaveDistinctSafeKeys() {
         val ids = listOf("a/b", "a?b", "a_b", "", "unknown", "a".repeat(200) + "x", "a".repeat(200) + "y")
         val keys = ids.map(ArtOverrideStore::sanitizeId)

@@ -857,7 +857,7 @@ class PlayerController(
         }
         return MediaItem.Builder()
             .setMediaId(id)
-            .setUri(localUri ?: android.net.Uri.parse(client.streamUrl(id, transcodeBitrate)))
+            .setUri(localUri ?: PlaybackStreamUri.build(id, transcodeBitrate, java.util.UUID.randomUUID().toString()))
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(title)

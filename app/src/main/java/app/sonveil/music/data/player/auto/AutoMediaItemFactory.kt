@@ -87,7 +87,7 @@ class AutoMediaItemFactory(
         }
         return MediaItem.Builder()
             .setMediaId(AutoBrowseIds.song(song.id, parentId, index))
-            .setUri(client.streamUrl(song.id, bitrate()))
+            .setUri(app.sonveil.music.data.player.PlaybackStreamUri.build(song.id, bitrate(), java.util.UUID.randomUUID().toString()))
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(song.title.ifBlank { "Track" })
