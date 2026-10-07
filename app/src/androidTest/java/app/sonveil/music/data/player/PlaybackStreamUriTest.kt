@@ -15,6 +15,13 @@ class PlaybackStreamUriTest {
         assertEquals(320, PlaybackStreamUri.bitrate(uri))
     }
 
+    @Test fun installedAndroidAutoPassesHostVerification() {
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val host = app.sonveil.music.data.player.auto.AutoClientGate.lookup(context, "com.google.android.projection.gearhead")
+        assertEquals("com.google.android.projection.gearhead", host.packageName)
+        org.junit.Assert.assertTrue("Installed Android Auto should be recognized by signer/system identity", host.trustedHost)
+    }
+
     @Test fun rejectsOtherSchemes() {
         val uri = android.net.Uri.parse("https://example.test/rest/stream?id=1&apiKey=secret")
         assertNull(PlaybackStreamUri.songId(uri))
