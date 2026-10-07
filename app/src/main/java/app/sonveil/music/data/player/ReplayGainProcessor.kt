@@ -37,7 +37,7 @@ class ReplayGainProcessor : BaseAudioProcessor() {
         // Media3 delivers native-order PCM. ByteBuffer defaults to big endian, and
         // reading samples that way byte-swaps the frame into metallic/robotic audio.
         inputBuffer.order(ByteOrder.nativeOrder())
-        if (gain == 1f && !limit) {
+        if (gain == 1f) {
             val out = replaceOutputBuffer(inputBuffer.remaining()).order(ByteOrder.nativeOrder())
             out.put(inputBuffer)
             out.flip()
@@ -49,9 +49,8 @@ class ReplayGainProcessor : BaseAudioProcessor() {
     private fun process16(input: ByteBuffer, gain: Float, limit: Boolean) {
         val out = replaceOutputBuffer(input.remaining()).order(ByteOrder.nativeOrder())
         while (input.remaining() >= 2) {
-            var x = input.short / 32768f * gain
-            if (limit) x = x.coerceIn(-1f, 1f)
-            out.putShort((x * 32767f).toInt().coerceIn(-32768, 32767).toShort())
+            val sample = input.short.toFloat() * gain
+            out.putShort(sample.toInt().coerceIn(-32768, 32767).toShort())
         }
         out.flip()
     }
