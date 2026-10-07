@@ -901,9 +901,12 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
 
     /** Apply gain once in PCM; AudioTrack volume is reserved for mute/settle and fades. */
     private fun applyReplayGain(exo: ExoPlayer, item: MediaItem?, eq: EqController) {
-        if (fading || sessionBindPending) return
+        if (fading) return
         rgLinear = ReplayGainProcessor.fromExtras(item?.mediaMetadata?.extras, settings.replayGainMode, settings.peakLimiter)
+        // Audio may be decoded and queued while the AudioTrack is muted. Apply gain
+        // before that buffering begins, so unmuting cannot reveal a unity-gain burst.
         setPcmGain(exo, rgLinear)
+        if (sessionBindPending) return
         eq.applyReplayGainLinear(1f, settings)
         if (abs(exo.volume - 1f) >= 0.01f) {
             if (exo.volume < 0.5f) setPlayerVolumeSmooth(exo, 1f) else exo.volume = 1f
