@@ -7,13 +7,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,29 +67,11 @@ fun AuralisTheme(
         ThemeMode.Dark -> true
         ThemeMode.Light -> false
     }
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = palette.primary,
-            onPrimary = palette.onPrimary,
-            secondary = palette.secondary,
-            background = palette.background,
-            surface = palette.surface,
-            onBackground = palette.onBackground,
-            onSurface = palette.onSurface,
-            surfaceVariant = palette.surfaceHigh,
-        )
-    } else {
-        lightColorScheme(
-            primary = palette.primary,
-            onPrimary = palette.onPrimary,
-            secondary = palette.secondary,
-            background = palette.background,
-            surface = palette.surface,
-            onBackground = palette.onBackground,
-            onSurface = palette.onSurface,
-            surfaceVariant = palette.surfaceHigh,
-        )
-    }
+    // The palette (hoisted from PlayerController: album art, or the static app scheme)
+    // is the single source of truth. MaterialTheme gets *every* role from it, so stock
+    // Material components (TextButton, Switch, Slider, RadioButton, menus, sheets, text
+    // fields) follow the art too instead of falling back to Material's baseline purple.
+    val scheme = remember(palette, dark) { palette.toColorScheme(dark) }
     CompositionLocalProvider(LocalPalette provides palette) {
         MaterialTheme(colorScheme = scheme, typography = AuralisTypography) {
             Box(Modifier.fillMaxSize()) {
@@ -94,6 +80,73 @@ fun AuralisTheme(
             }
         }
     }
+}
+
+/**
+ * Maps the art-derived [AuralisPalette] (+ its tonal [app.sonveil.music.data.player.ArtScheme])
+ * to a complete Material 3 [ColorScheme]. Page/surface colors keep the art blur surfaces the
+ * app already draws; accent and container roles come from the contrast-checked tonal scheme.
+ */
+fun AuralisPalette.toColorScheme(dark: Boolean = isDark): ColorScheme {
+    val s = scheme
+    val base = if (dark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = Color(s.primary),
+        onPrimary = Color(s.onPrimary),
+        primaryContainer = Color(s.primaryContainer),
+        onPrimaryContainer = Color(s.onPrimaryContainer),
+        inversePrimary = Color(s.inversePrimary),
+        secondary = Color(s.secondary),
+        onSecondary = Color(s.onSecondary),
+        secondaryContainer = Color(s.secondaryContainer),
+        onSecondaryContainer = Color(s.onSecondaryContainer),
+        tertiary = Color(s.tertiary),
+        onTertiary = Color(s.onTertiary),
+        tertiaryContainer = Color(s.tertiaryContainer),
+        onTertiaryContainer = Color(s.onTertiaryContainer),
+        background = background,
+        onBackground = onBackground,
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceHigh,
+        onSurfaceVariant = Color(s.onSurfaceVariant),
+        surfaceTint = Color(s.primary),
+        inverseSurface = Color(s.inverseSurface),
+        inverseOnSurface = Color(s.inverseOnSurface),
+        outline = Color(s.outline),
+        outlineVariant = Color(s.outlineVariant),
+        surfaceBright = Color(s.surfaceBright),
+        surfaceDim = Color(s.surfaceDim),
+        surfaceContainerLowest = Color(s.surfaceContainerLowest),
+        surfaceContainerLow = Color(s.surfaceContainerLow),
+        surfaceContainer = Color(s.surfaceContainer),
+        surfaceContainerHigh = Color(s.surfaceContainerHigh),
+        surfaceContainerHighest = Color(s.surfaceContainerHighest),
+    )
+}
+
+/** Seek bar / progress colors, shared by the Now Playing seek bar and the mini player. */
+data class SeekColors(val active: Color, val inactive: Color, val thumb: Color)
+
+val AuralisPalette.seekColors: SeekColors
+    get() = SeekColors(
+        active = Color(scheme.seekActive),
+        inactive = Color(scheme.seekInactive),
+        thumb = Color(scheme.seekActive),
+    )
+
+/**
+ * Slider colors for every Settings/EQ slider: thumb + active track take the art primary from
+ * MaterialTheme; the inactive track uses the same translucent token as the seek bar so it
+ * stays visible on glass cards (Material's default secondaryContainer can vanish there).
+ */
+@Composable
+fun sonveilSliderColors(): SliderColors {
+    val seek = LocalPalette.current.seekColors
+    return SliderDefaults.colors(
+        inactiveTrackColor = seek.inactive,
+        inactiveTickColor = seek.active.copy(alpha = 0.6f),
+    )
 }
 
 @Composable

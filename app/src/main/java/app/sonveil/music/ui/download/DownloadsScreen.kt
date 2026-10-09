@@ -30,7 +30,7 @@ fun DownloadsScreen(onBack: () -> Unit) {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
         item {
-            TextButton(onClick = onBack) { Text("Back", color = palette.onBackground) }
+            TextButton(onClick = onBack) { Text("Back") }
             Text("Downloads", color = palette.onBackground, modifier = Modifier.padding(16.dp))
             if (songs.isEmpty()) Text("Download an album or playlist to listen offline.",
                 color = palette.onBackground, modifier = Modifier.padding(16.dp))

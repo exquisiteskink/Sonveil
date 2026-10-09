@@ -2,6 +2,7 @@ package app.sonveil.music.ui.player
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.animation.core.Spring
@@ -90,6 +91,7 @@ import app.sonveil.music.ui.theme.AuralisMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.UltraBlurBackground
+import app.sonveil.music.ui.theme.seekColors
 import app.sonveil.music.ui.theme.sonveilGlass
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -296,12 +298,16 @@ internal fun MiniBar(
             .fillMaxWidth()
             .sonveilGlass(p, 16.dp, opaque = true),
     ) {
-        Box(Modifier.fillMaxWidth().height(3.dp).background(p.onBackground.copy(alpha = 0.12f))) {
+        val seek = p.seekColors
+        val seekSpec = AuralisMotion.emphasized<androidx.compose.ui.graphics.Color>(AuralisMotion.DurationPaletteMs)
+        val seekActive by animateColorAsState(seek.active, seekSpec, label = "mini-active")
+        val seekInactive by animateColorAsState(seek.inactive, seekSpec, label = "mini-inactive")
+        Box(Modifier.fillMaxWidth().height(3.dp).background(seekInactive)) {
             Box(
                 Modifier
                     .fillMaxWidth(progress)
                     .height(3.dp)
-                    .background(p.primary),
+                    .background(seekActive),
             )
         }
         Row(
@@ -361,7 +367,7 @@ internal fun ControlsDeck(ui: PlayerUiState) {
             Icon(
                 Icons.Rounded.Shuffle,
                 "Shuffle",
-                tint = if (ui.shuffle) p.onBackground else p.onBackground.copy(alpha = 0.32f),
+                tint = if (ui.shuffle) p.primary else p.onBackground.copy(alpha = 0.32f),
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -403,7 +409,7 @@ internal fun ControlsDeck(ui: PlayerUiState) {
             Icon(
                 if (ui.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 "Repeat",
-                tint = if (ui.repeatMode != Player.REPEAT_MODE_OFF) p.onBackground else p.onBackground.copy(alpha = 0.32f),
+                tint = if (ui.repeatMode != Player.REPEAT_MODE_OFF) p.primary else p.onBackground.copy(alpha = 0.32f),
                 modifier = Modifier.size(28.dp),
             )
         }

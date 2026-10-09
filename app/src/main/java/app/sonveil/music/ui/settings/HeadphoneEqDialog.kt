@@ -76,7 +76,7 @@ fun HeadphoneEqDialog(
             )
             Spacer(Modifier.height(8.dp))
             when {
-                catalog == null -> CircularProgressIndicator(color = p.onBackground)
+                catalog == null -> CircularProgressIndicator()
                 catalog!!.isEmpty() -> Text(
                     "The headphone catalog did not load. Check Sonveil/AutoEq in logcat.",
                     color = p.onBackground,
@@ -132,7 +132,7 @@ fun HeadphoneEqDialog(
                 }
             }
             TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 4.dp)) {
-                Text("Close", color = p.onBackground)
+                Text("Close")
             }
             Text(
                 "Curves from AutoEq by Jaakko Pasanen, MIT.",
