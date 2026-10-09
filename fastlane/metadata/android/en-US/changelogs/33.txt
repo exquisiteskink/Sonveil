@@ -1,0 +1,1 @@
+Seek bar, Settings buttons, sliders, and switches now follow a single color scheme from the playing album art. Idle colors fall back to the static gold scheme.

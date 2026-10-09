@@ -29,7 +29,7 @@ Captured on a Galaxy Z Fold 6. Artwork comes from the connected music server.
 
 ## Features
 
-Verified against the current codebase (v1.3.12):
+Verified against the current codebase (v1.3.13):
 
 ### Library & playback
 - Browse albums, artists, playlists, favorites, and genres; search songs, artists, albums, and genres
@@ -43,7 +43,7 @@ Verified against the current codebase (v1.3.12):
 ### Sound
 - 10-band graphic equalizer and parametric EQ with preamp
 - **AutoEQ** headphone search (~8,800 measurements); profiles restore per connected output
-- Album-art–driven accents in light and dark Material 3 themes
+- Album-art–driven Material 3 scheme for the seek bar, buttons, sliders, and switches in light and dark themes
 
 ### Offline & controls
 - Download albums or playlists; resume interrupted transfers; Wi‑Fi-only option for hi-res fetches
@@ -91,7 +91,7 @@ Versions **1.3.8+** upgrade in place under `app.sonveil.music`. Builds **1.3.7 a
 2. Open the APK on your phone (allow installs from your browser/file manager if prompted).
 3. Enter your server URL and credentials.
 
-Latest notes: [1.3.11](RELEASE_NOTES_1.3.11.md) · full [Changelog](CHANGELOG.md)
+Latest notes: [1.3.13](RELEASE_NOTES_1.3.13.md) · full [Changelog](CHANGELOG.md)
 
 ### Build from source
 

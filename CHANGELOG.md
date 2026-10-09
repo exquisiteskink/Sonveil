@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.13 — 2026-10-09
+
+### Changed
+- Derive a full Material 3 color scheme from one album-art seed so the seek bar, mini progress, Settings buttons, sliders, switches, selected navigation, and action buttons follow the artwork.
+- Keep the static gold fallback when nothing is playing.
+
+### Validation
+- 123 unit tests passed; lint reports no errors.
+- On-device visuals were not checked (no phone attached). A connected car and external Poweramp EQ/Wavelet were not tested.
+
 ## 1.3.12 — 2026-10-06
 
 ### Fixed
