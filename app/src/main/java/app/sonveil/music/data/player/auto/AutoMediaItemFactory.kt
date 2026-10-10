@@ -33,6 +33,13 @@ class AutoMediaItemFactory(
         isPlayable = false,
     )
 
+    /** IDs grouped under Home; a logged-out client may still request these. */
+    fun homeChildIds(): Set<String> = setOf(
+        AutoBrowseIds.RECENT,
+        AutoBrowseIds.FAVORITES,
+        AutoBrowseIds.NEWEST,
+    )
+
     fun homeRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.HOME,
         title = "Home",
