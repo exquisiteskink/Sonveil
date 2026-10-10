@@ -9,7 +9,7 @@ Sonveil is a **media-category** Android Auto app: Media3 `MediaLibraryService` +
 | App list label | `android:label` → `@string/app_name` → **Sonveil** |
 | App list icon | `@mipmap/ic_launcher` |
 | Package identity | `applicationId` / namespace `app.sonveil.music` |
-| Browse tabs | Playlists, Recently played, Favorites, Recently added |
+| Browse tabs | Home (Recently played, Favorites, Recently added), Artists → albums, Albums (A–Z, up to 1000), Playlists |
 | Attribution icon | Monochrome `@drawable/ic_stat_auralis` on media cards |
 
 Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** shown in the AA drawer.
@@ -21,7 +21,7 @@ Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** 
    - `androidx.media3.session.MediaLibraryService`
    - `androidx.media3.session.MediaSessionService`
    - `android.media.browse.MediaBrowserService`
-3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs) do not require login.
+3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs: Home, Artists, Albums, Playlists; AA shows at most four) do not require login.
 4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build. An allowlisted name is accepted only when that package is a system image app, shares a signer with Play services or the Play Store, or matches the known Android Auto production certificate. A sideloaded package that only copies the name is rejected.
 5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` using signed capabilities for each account, cover and size (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
 6. Assistant and Gemini play-from-search requests resolve through `AutoVoiceSearch` using the signed-in Subsonic library. Empty requests play favorites or the latest recent album; explicit song, album, artist, playlist and genre requests use the matching server APIs. Voice playback must use the media service and pass its controller authorization; the phone activity does not execute legacy `MEDIA_PLAY_FROM_SEARCH` intents.

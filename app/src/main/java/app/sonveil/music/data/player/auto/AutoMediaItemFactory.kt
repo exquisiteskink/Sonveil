@@ -7,7 +7,9 @@ import androidx.media3.common.MediaMetadata
 import app.sonveil.music.R
 import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.player.PlayerSettings
+import androidx.media3.session.MediaConstants
 import app.sonveil.music.data.remote.AlbumID3
+import app.sonveil.music.data.remote.ArtistID3
 import app.sonveil.music.data.remote.Playlist
 import app.sonveil.music.data.remote.Song
 import app.sonveil.music.data.remote.SubsonicClient
@@ -31,6 +33,38 @@ class AutoMediaItemFactory(
         isPlayable = false,
     )
 
+    fun homeRoot(): MediaItem = folder(
+        mediaId = AutoBrowseIds.HOME,
+        title = "Home",
+        iconRes = R.drawable.ic_auto_home,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
+    )
+
+    fun artistsRoot(): MediaItem = folder(
+        mediaId = AutoBrowseIds.ARTISTS,
+        title = "Artists",
+        iconRes = R.drawable.ic_auto_artists,
+        mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+    )
+
+    fun albumsRoot(): MediaItem = folder(
+        mediaId = AutoBrowseIds.ALBUMS,
+        title = "Albums",
+        iconRes = R.drawable.ic_auto_albums,
+        mediaType = MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
+    )
+
+    fun artist(artist: ArtistID3): MediaItem = folder(
+        mediaId = AutoBrowseIds.artist(artist.id),
+        title = artist.name.ifBlank { "Artist" },
+        subtitle = if (artist.albumCount > 0) "${artist.albumCount} albums" else null,
+        artworkId = artist.coverArt,
+        mediaType = MediaMetadata.MEDIA_TYPE_ARTIST,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
+    )
+
     fun playlistsRoot(): MediaItem = folder(
         mediaId = AutoBrowseIds.PLAYLISTS,
         title = "Playlists",
@@ -41,6 +75,7 @@ class AutoMediaItemFactory(
         mediaId = AutoBrowseIds.RECENT,
         title = "Recently played",
         iconRes = R.drawable.ic_auto_recent,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
     )
 
     fun favoritesRoot(): MediaItem = folder(
@@ -53,6 +88,7 @@ class AutoMediaItemFactory(
         mediaId = AutoBrowseIds.NEWEST,
         title = "Recently added",
         iconRes = R.drawable.ic_auto_newest,
+        childStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
     )
 
     fun playlist(pl: Playlist): MediaItem = folder(
@@ -118,6 +154,7 @@ class AutoMediaItemFactory(
         iconRes: Int? = null,
         mediaType: Int = MediaMetadata.MEDIA_TYPE_FOLDER_MIXED,
         isPlayable: Boolean = false,
+        childStyle: Int? = null,
     ): MediaItem {
         val art = when {
             artworkId != null -> CoverArtContentProvider.authorizedContentUri(artworkId, 400, client.credentials, client.artworkNamespace)
@@ -136,9 +173,17 @@ class AutoMediaItemFactory(
                     .setIsBrowsable(true)
                     .setIsPlayable(isPlayable)
                     .setArtworkUri(art)
+                    .apply { childStyle?.let { setExtras(contentStyle(it)) } }
                     .build(),
             )
             .build()
     }
 
+    companion object {
+        /** Tells AA how to render this folder's children (grid for albums, list for artists/songs). */
+        fun contentStyle(browsable: Int): Bundle = Bundle().apply {
+            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, browsable)
+            putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM)
+        }
+    }
 }
