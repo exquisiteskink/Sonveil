@@ -182,12 +182,14 @@ class AutoLibraryCallback(
         scope.coroutineContext.job.cancel()
     }
 
-    private fun rootTabIds(): Set<String> = setOf(
-        AutoBrowseIds.PLAYLISTS,
-        AutoBrowseIds.RECENT,
-        AutoBrowseIds.FAVORITES,
-        AutoBrowseIds.NEWEST,
-    )
+    /**
+     * Root tab IDs (from the single source of truth in [AutoBrowseTree]) plus Home's children,
+     * so a logged-out client requesting a browse root gets AUTH_EXPIRED, not BAD_VALUE.
+     */
+    private fun rootTabIds(): Set<String> = buildSet {
+        addAll(AutoBrowseTree.rootOrder)
+        addAll(factory.homeChildIds())
+    }
 
     private fun <T : Any> futureResult(block: suspend () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
         val future = SettableFuture.create<LibraryResult<T>>()
