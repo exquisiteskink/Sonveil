@@ -65,6 +65,17 @@ class SubsonicClient(
         artworkNamespace = randomSalt(32)
     }
 
+    /**
+     * Re-validating the same account (cold-start restore, transient-failure retry) must not
+     * invalidate artwork capabilities already handed to the queue / Android Auto: the
+     * current item's `content://` cover would fail its HMAC check and AA Now Playing goes
+     * blank. Only a different account (or logout via [rotateSessionSalt]) rotates them.
+     */
+    internal fun onAuthenticated(previous: StoredCredentials?, accepted: StoredCredentials) {
+        sessionSalt = randomSalt()
+        if (previous != null && !sameArtworkAccount(previous, accepted)) artworkNamespace = randomSalt(32)
+    }
+
     suspend fun ping(): ServerInfo {
         return ping(credentials ?: throw SubsonicException(40, "Not signed in"))
     }
@@ -102,8 +113,9 @@ class SubsonicClient(
             }
         }
         // Publish credentials only after authentication succeeds (including fallback).
+        val previous = credentials
         credentials = result.first
-        rotateSessionSalt()
+        onAuthenticated(previous, result.first)
         return result
     }
 
@@ -370,3 +382,6 @@ class SubsonicClient(
             bytes.joinToString("") { "%02x".format(it) }
     }
 }
+
+internal fun sameArtworkAccount(a: StoredCredentials, b: StoredCredentials): Boolean =
+    a.serverUrl.trim().trimEnd('/') == b.serverUrl.trim().trimEnd('/') && a.username == b.username
