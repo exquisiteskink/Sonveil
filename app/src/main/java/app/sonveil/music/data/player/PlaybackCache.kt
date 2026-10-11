@@ -24,6 +24,7 @@ import java.util.concurrent.Executors
 internal class PlaybackCache(context: Context, private val client: SubsonicClient, http: DataSource.Factory) {
     private val prefetchExecutor = Executors.newSingleThreadExecutor()
     private val prefetchLock = Any()
+    @Volatile private var released = false
     private var prefetchGeneration = 0L
     private var prefetchWriter: CacheWriter? = null
     private var prefetchedUris: List<Uri> = emptyList()
@@ -63,7 +64,10 @@ internal class PlaybackCache(context: Context, private val client: SubsonicClien
 
     private fun scope(spec: DataSpec): DataSpec {
         val songId = PlaybackStreamUri.songId(spec.uri) ?: return spec
-        val credentials = client.credentials ?: throw SubsonicException(40, "Not signed in")
+        // Sign-out can null credentials mid-load. Throw a retryable IOException (not a domain
+        // exception): Media3 treats a non-IOException from a DataSource as an unretryable
+        // UnexpectedLoaderException that permanently wedges the player.
+        val credentials = client.credentials ?: throw java.io.IOException("Not signed in")
         val account = listOf(credentials.authMode.toString(), credentials.username, credentials.apiKey)
             .joinToString("") { "${it.length}:$it" }
         return spec.buildUpon().setCustomData(credentials).setKey(PlaybackCacheKey.build(
@@ -72,6 +76,7 @@ internal class PlaybackCache(context: Context, private val client: SubsonicClien
 
     /** Queue look-ahead is best effort and never blocks the audible player's reads. */
     fun prefetch(uris: List<Uri>) {
+        if (released) return
         val factory = cachedHttp ?: return
         val remote = uris.filter { PlaybackStreamUri.songId(it) != null }.take(2)
         val generation = synchronized(prefetchLock) {
@@ -106,10 +111,15 @@ internal class PlaybackCache(context: Context, private val client: SubsonicClien
         }
     }
 
-    /** Stop look-ahead; keep the process singleton available across service restarts. */
+    /**
+     * Stop look-ahead. The [SimpleCache] and its executor are process-scoped and shared across
+     * service restarts, so they are intentionally NOT torn down here (releasing the disk cache on
+     * every onDestroy would defeat reuse and leak its init thread only at true process death).
+     * After this, [prefetch] is a no-op rather than throwing on a shut-down executor.
+     */
     fun release() {
+        released = true
         prefetch(emptyList())
-        prefetchExecutor.shutdown()
     }
 
     companion object {

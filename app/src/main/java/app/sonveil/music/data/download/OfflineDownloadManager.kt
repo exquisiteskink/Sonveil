@@ -100,7 +100,12 @@ class OfflineDownloadManager(
         }
         work.replace {
             if (client.credentials != creds) return@replace
-            runBatch(songs.toList(), collectionLabel, collectionId, creds)
+            // Batch orchestration does per-song disk I/O (savePending/bytesUsed/hasSong walk the
+            // tree). Keep it off the main thread so a large album cannot jank/ANR the UI; the
+            // work queue still serializes batches and _state is a thread-safe StateFlow.
+            withContext(Dispatchers.IO) {
+                runBatch(songs.toList(), collectionLabel, collectionId, creds)
+            }
         }
     }
 

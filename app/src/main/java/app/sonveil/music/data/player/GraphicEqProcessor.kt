@@ -17,10 +17,11 @@ class GraphicEqProcessor : BaseAudioProcessor() {
         val enabled: Boolean,
         val preamp: Float,
         val filters: Array<EqBiquad>,
+        val channels: Int,
     )
 
     @Volatile
-    private var render = RenderState(false, 1f, emptyArray())
+    private var render = RenderState(false, 1f, emptyArray(), 2)
 
     private var spec: List<EqFilter> = emptyList()
     private var preampLinear = 1f
@@ -66,7 +67,8 @@ class GraphicEqProcessor : BaseAudioProcessor() {
     }
 
     private fun process16(input: ByteBuffer, out: ByteBuffer) {
-        val ch = channels
+        val state = render
+        val ch = state.channels
         while (input.remaining() >= 2 * ch) {
             for (c in 0 until ch) {
                 val x = apply(input.short / 32768f, c)
@@ -77,7 +79,8 @@ class GraphicEqProcessor : BaseAudioProcessor() {
     }
 
     private fun processFloat(input: ByteBuffer, out: ByteBuffer) {
-        val ch = channels
+        val state = render
+        val ch = state.channels
         while (input.remaining() >= 4 * ch) {
             for (c in 0 until ch) {
                 out.putFloat(apply(input.float, c))
@@ -91,7 +94,7 @@ class GraphicEqProcessor : BaseAudioProcessor() {
         var x = sample * state.preamp
         val f = state.filters
         var i = channel
-        val step = channels
+        val step = state.channels
         while (i < f.size) {
             x = f[i].process(x)
             i += step
@@ -113,7 +116,7 @@ class GraphicEqProcessor : BaseAudioProcessor() {
                 }
             }
         }
-        render = RenderState(active, preampLinear, built)
+        render = RenderState(active, preampLinear, built, channels)
     }
 
     override fun onFlush() {

@@ -48,7 +48,13 @@ class DownloadStore internal constructor(private val root: File) {
         val file = indexFile(key)
         val index = if (file.isFile) {
             runCatching { json.decodeFromString(OfflineIndex.serializer(), file.readText()) }
-                .getOrElse { OfflineIndex(serverKey = key) }
+                .getOrElse {
+                    // A corrupt/truncated index (e.g. power loss mid-write) must not be silently
+                    // treated as empty — that hides every downloaded track while orphaning the
+                    // files on disk. Preserve it as .corrupt for recovery, then start fresh.
+                    runCatching { file.renameTo(File(file.parentFile, "index.json.corrupt")) }
+                    OfflineIndex(serverKey = key)
+                }
         } else {
             OfflineIndex(serverKey = key)
         }

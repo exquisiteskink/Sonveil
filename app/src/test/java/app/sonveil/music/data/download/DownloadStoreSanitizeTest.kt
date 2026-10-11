@@ -3,6 +3,7 @@ package app.sonveil.music.data.download
 import app.sonveil.music.data.auth.AuthMode
 import app.sonveil.music.data.auth.StoredCredentials
 import app.sonveil.music.data.remote.Song
+import java.io.File
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -39,5 +40,21 @@ class DownloadStoreSanitizeTest {
     @Test fun guessSuffixFromContentType() {
         assertEquals("flac", DownloadStore.guessSuffix("audio/flac"))
         assertEquals("mp3", DownloadStore.guessSuffix("audio/mpeg"))
+    }
+
+    @Test fun corruptIndexIsQuarantinedNotSilentlyDiscarded() {
+        // A truncated index.json (power loss mid-write) must not be silently treated as empty:
+        // that hides every downloaded track while orphaning the files. Preserve it for recovery.
+        val root = temp.newFolder()
+        val store = DownloadStore(root)
+        val key = store.serverKey(StoredCredentials("https://music.example", "listener"))
+        val indexFile = File(File(root, key), "index.json")
+        indexFile.parentFile?.mkdirs()
+        indexFile.writeText("{truncated")
+        assertTrue(store.loadIndex(key).songs.isEmpty())
+        assertFalse("corrupt index must be moved aside, not left in place", indexFile.isFile)
+        val quarantined = File(indexFile.parentFile, "index.json.corrupt")
+        assertTrue("corrupt index must be quarantined for recovery", quarantined.isFile)
+        assertEquals("{truncated", quarantined.readText())
     }
 }

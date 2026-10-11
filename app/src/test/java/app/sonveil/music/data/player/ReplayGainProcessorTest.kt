@@ -1,6 +1,7 @@
 package app.sonveil.music.data.player
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReplayGainProcessorTest {
@@ -82,5 +83,23 @@ class ReplayGainProcessorTest {
             limiter = true,
         )
         assertEquals(withoutPeak, withBogusPeak, 0.0001f)
+    }
+
+    @Test
+    fun limiterCeilingIsFormatIndependent_pcm16AndFloatUseSameGain() {
+        // The limiter is applied at the gain level (min(gain, 0.99/peak)), so PCM16 and float
+        // receive the identical limited gain; process16's integer clamp only guards overflow.
+        val gain = ReplayGainProcessor.computeLinearGain(
+            mode = ReplayGainMode.Track,
+            trackDb = 6f,
+            albumDb = Float.NaN,
+            trackPeak = 1.5f,
+            albumPeak = Float.NaN,
+            fallbackDb = Float.NaN,
+            limiter = true,
+        )
+        assertEquals(0.99f / 1.5f, gain, 0.001f)
+        // A peak-1.5 sample at this gain stays under full scale -> no clip on either path.
+        assertTrue(1.5f * gain <= 0.99f + 1e-4f)
     }
 }
