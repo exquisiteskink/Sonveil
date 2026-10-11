@@ -6,7 +6,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import app.sonveil.music.AuralisApp
+import app.sonveil.music.SonveilApp
 import app.sonveil.music.data.auth.StoredCredentials
 import java.io.File
 import java.io.FileNotFoundException
@@ -28,7 +28,7 @@ class CoverArtContentProvider : ContentProvider() {
 
     private val cache by lazy {
         val context = requireNotNull(context)
-        val app = context.applicationContext as AuralisApp
+        val app = context.applicationContext as SonveilApp
         // Use a new directory so old id-only entries are never reused.
         CoverArtCache(File(context.cacheDir, "coverart-v2"), app.container.client.http)
     }
@@ -43,7 +43,7 @@ class CoverArtContentProvider : ContentProvider() {
         }
         val parsed = parse(uri) ?: throw FileNotFoundException("Bad cover URI: $uri")
         val context = context ?: throw FileNotFoundException("No context")
-        val app = context.applicationContext as? AuralisApp
+        val app = context.applicationContext as? SonveilApp
             ?: throw FileNotFoundException("App not ready")
         val container = app.container
         val credentials = container.client.credentials ?: throw FileNotFoundException("Not signed in")

@@ -6,7 +6,7 @@ import android.util.Log
 
 /**
  * Detects when an **external** equalizer (especially Poweramp EQ + DVC) is likely
- * in play, so Auralis can fail closed on dual-ExoPlayer crossfade.
+ * in play, so Sonveil can fail closed on dual-ExoPlayer crossfade.
  *
  * There is **no** public API for “DVC is currently on”. Package presence is the
  * durable signal: if Poweramp Equalizer is installed, dual-player CF is treated

@@ -83,7 +83,7 @@ import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.formatDurationMs
 import app.sonveil.music.ui.components.AlbumCoverArt
 import app.sonveil.music.ui.components.SongRow
-import app.sonveil.music.ui.theme.AuralisMotion
+import app.sonveil.music.ui.theme.SonveilMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.LocalPlayerState
@@ -319,7 +319,7 @@ private fun NowPlayingPage(
             Spacer(Modifier.height(4.dp))
             Crossfade(
                 targetState = showLyrics,
-                animationSpec = AuralisMotion.emphasized(AuralisMotion.DurationArtMs),
+                animationSpec = SonveilMotion.emphasized(SonveilMotion.DurationArtMs),
                 label = "np-lyrics",
                 modifier = Modifier.size(artSize),
             ) { lyricsMode ->

@@ -72,7 +72,7 @@ internal class DvcSessionAnchor(private val sessionId: Int) {
                     }
                 }
                 if (track === output) running = false
-            }, "Auralis-DVC-anchor").also { it.start() }
+            }, "Sonveil-DVC-anchor").also { it.start() }
             Log.i(TAG, "silent anchor started session=$sessionId")
         } catch (e: Exception) {
             running = false

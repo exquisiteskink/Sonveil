@@ -87,7 +87,7 @@ import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.formatDurationMs
 import app.sonveil.music.ui.components.AlbumCoverArt
 import app.sonveil.music.ui.components.SongRow
-import app.sonveil.music.ui.theme.AuralisMotion
+import app.sonveil.music.ui.theme.SonveilMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.UltraBlurBackground
@@ -299,7 +299,7 @@ internal fun MiniBar(
             .sonveilGlass(p, 16.dp, opaque = true),
     ) {
         val seek = p.seekColors
-        val seekSpec = AuralisMotion.emphasized<androidx.compose.ui.graphics.Color>(AuralisMotion.DurationPaletteMs)
+        val seekSpec = SonveilMotion.emphasized<androidx.compose.ui.graphics.Color>(SonveilMotion.DurationPaletteMs)
         val seekActive by animateColorAsState(seek.active, seekSpec, label = "mini-active")
         val seekInactive by animateColorAsState(seek.inactive, seekSpec, label = "mini-inactive")
         Box(Modifier.fillMaxWidth().height(3.dp).background(seekInactive)) {
@@ -377,7 +377,7 @@ internal fun ControlsDeck(ui: PlayerUiState) {
         val playPressed by playInteraction.collectIsPressedAsState()
         val playScale by animateFloatAsState(
             targetValue = if (playPressed) 0.92f else 1f,
-            animationSpec = AuralisMotion.standard(AuralisMotion.DurationPressMs),
+            animationSpec = SonveilMotion.standard(SonveilMotion.DurationPressMs),
             label = "play-press",
         )
         Box(

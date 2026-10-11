@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.composed
-import app.sonveil.music.ui.theme.AuralisMotion
+import app.sonveil.music.ui.theme.SonveilMotion
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -87,7 +87,7 @@ private fun Modifier.pressScale(onClick: () -> Unit): Modifier = composed {
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
-        animationSpec = AuralisMotion.standard(AuralisMotion.DurationPressMs),
+        animationSpec = SonveilMotion.standard(SonveilMotion.DurationPressMs),
         label = "card-press",
     )
     this

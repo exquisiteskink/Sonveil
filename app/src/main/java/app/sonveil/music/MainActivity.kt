@@ -68,14 +68,14 @@ import app.sonveil.music.ui.playlist.PlaylistScreen
 import app.sonveil.music.ui.search.SearchScreen
 import app.sonveil.music.ui.settings.AppearancePrefs
 import app.sonveil.music.ui.settings.SettingsScreen
-import app.sonveil.music.ui.theme.AuralisMotion
-import app.sonveil.music.ui.theme.AuralisTheme
+import app.sonveil.music.ui.theme.SonveilMotion
+import app.sonveil.music.ui.theme.SonveilTheme
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.LocalPlayerState
-import app.sonveil.music.data.player.AuralisPalette
+import app.sonveil.music.data.player.SonveilPalette
 import app.sonveil.music.ui.theme.ThemeMode
 import app.sonveil.music.ui.theme.sonveilGlass
 import androidx.compose.runtime.CompositionLocalProvider
@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                 requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 0)
             }
         }
-        val app = application as AuralisApp
+        val app = application as SonveilApp
         val container = app.container
         setContent {
             val prefs = remember { AppearancePrefs(this) }
@@ -118,8 +118,8 @@ class MainActivity : ComponentActivity() {
 
             val palette = playerPalette.let { pal ->
                 if (pal.isDark == dark) pal
-                else if (dark) AuralisPalette.darkDefault()
-                else AuralisPalette.lightDefault()
+                else if (dark) SonveilPalette.darkDefault()
+                else SonveilPalette.lightDefault()
             }
 
             CompositionLocalProvider(
@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
                 LocalPlayer provides container.player,
                 LocalPlayerState provides playerState,
             ) {
-                AuralisTheme(palette = palette, themeMode = themeMode) {
+                SonveilTheme(palette = palette, themeMode = themeMode) {
                     val p = LocalPalette.current
                     SideEffect {
                         WindowCompat.getInsetsController(window, window.decorView)
@@ -139,7 +139,7 @@ class MainActivity : ComponentActivity() {
                     if (!authResolved) {
                         SessionSplash()
                     } else {
-                        AuralisRoot(
+                        SonveilRoot(
                             loggedIn = loggedIn,
                             themeMode = themeMode,
                             onThemeMode = { themeMode = it; prefs.themeMode = it },
@@ -179,7 +179,7 @@ private val tabs = listOf(
 )
 
 @Composable
-private fun AuralisRoot(
+private fun SonveilRoot(
     loggedIn: Boolean,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
@@ -274,22 +274,22 @@ private fun AuralisRoot(
                 startDestination = if (loggedIn) "home" else "login",
                 modifier = Modifier.fillMaxSize().padding(contentPadding),
                 enterTransition = {
-                    fadeIn(animationSpec = AuralisMotion.fade()) +
+                    fadeIn(animationSpec = SonveilMotion.fade()) +
                         slideInHorizontally(
-                            animationSpec = AuralisMotion.emphasized(),
+                            animationSpec = SonveilMotion.emphasized(),
                             initialOffsetX = { it / 28 },
                         )
                 },
                 exitTransition = {
-                    fadeOut(animationSpec = AuralisMotion.standard())
+                    fadeOut(animationSpec = SonveilMotion.standard())
                 },
                 popEnterTransition = {
-                    fadeIn(animationSpec = AuralisMotion.fade())
+                    fadeIn(animationSpec = SonveilMotion.fade())
                 },
                 popExitTransition = {
-                    fadeOut(animationSpec = AuralisMotion.standard()) +
+                    fadeOut(animationSpec = SonveilMotion.standard()) +
                         slideOutHorizontally(
-                            animationSpec = AuralisMotion.emphasized(),
+                            animationSpec = SonveilMotion.emphasized(),
                             targetOffsetX = { it / 28 },
                         )
                 },

@@ -178,7 +178,7 @@ object ArtColorMath {
 
 /**
  * Full Material 3 color roles derived from one album-art seed color.
- * Built off the main thread in [PaletteExtractor]; consumed by `AuralisTheme`.
+ * Built off the main thread in [PaletteExtractor]; consumed by `SonveilTheme`.
  */
 data class ArtScheme(
     val primary: Int,

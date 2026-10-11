@@ -647,6 +647,7 @@ private fun AutoEqSearchField(onClick: () -> Unit) {
 }
 
 class AppearancePrefs(context: Context) {
+    // Share the legacy preference file so upgrades retain appearance settings.
     private val prefs = context.getSharedPreferences("auralis_prefs", Context.MODE_PRIVATE)
 
     var themeMode: ThemeMode
