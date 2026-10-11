@@ -2,7 +2,6 @@ package app.sonveil.music.data.player
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
-import androidx.media3.common.audio.AudioProcessor.UnhandledAudioFormatException
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
@@ -53,8 +52,11 @@ internal class DvcPcmGate(private val onFlushWhileEnabled: (DvcPcmGate) -> Unit)
     val isClosed: Boolean get() = enabled && closed
 
     override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
+        // Deactivate (NOT_SET) on any non-PCM16 format rather than throwing: an
+        // UnhandledAudioFormatException becomes a fatal ConfigurationException that stops
+        // playback, whereas NOT_SET lets Media3 drop this processor and keep audio flowing.
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
-            throw UnhandledAudioFormatException(inputAudioFormat)
+            return AudioFormat.NOT_SET
         }
         return inputAudioFormat
     }

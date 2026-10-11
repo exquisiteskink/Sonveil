@@ -218,7 +218,9 @@ class PlayerSettings(context: Context) {
             return FloatArray(10) { i -> parts[i].toFloatOrNull() ?: 0f }
         }
         set(value) {
-            prefs.edit().putString(EQ_GAINS, value.joinToString(",") { "%.1f".format(it) }).apply()
+            // Locale.US: a comma-decimal locale would format 1.5 as "1,5", colliding with the
+            // ',' separator so the stored string no longer splits into 10 parts on read.
+            prefs.edit().putString(EQ_GAINS, value.joinToString(",") { "%.1f".format(java.util.Locale.US, it) }).apply()
         }
 
     fun register(listener: SharedPreferences.OnSharedPreferenceChangeListener) {

@@ -22,6 +22,8 @@ class AutoBrowsePagingTest {
     }
 
     @Test fun carHostReceivesEveryArtistEvenWithSmallPositivePageSize() {
+        // Car hosts cannot request subsequent pages, so they get the full list; capping to
+        // pageSize would make items past the first page unreachable.
         val allArtists = (0 until 1500).toList()
         assertEquals(allArtists, AutoBrowsePaging.forClient(allArtists, 0, 50, isCarHost = true))
     }

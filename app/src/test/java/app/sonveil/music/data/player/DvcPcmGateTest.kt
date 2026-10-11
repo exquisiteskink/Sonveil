@@ -78,4 +78,14 @@ class DvcPcmGateTest {
         assertTrue(!gate.isClosed)
         assertArrayEquals(shortArrayOf(1_000), output(gate, samples(1_000)))
     }
+
+    @Test fun floatFormatDeactivatesInsteadOfFailingTheSink() {
+        // A non-PCM16 format must deactivate the gate (NOT_SET) like GraphicEqProcessor, not
+        // throw UnhandledAudioFormatException, which Media3 turns into a fatal playback stop.
+        val gate = DvcPcmGate { }
+        assertEquals(
+            AudioFormat.NOT_SET,
+            gate.configure(AudioFormat(48_000, 2, C.ENCODING_PCM_FLOAT)),
+        )
+    }
 }

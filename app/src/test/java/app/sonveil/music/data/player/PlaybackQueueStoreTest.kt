@@ -68,6 +68,17 @@ class PlaybackQueueStoreTest {
     }
 
     @Test
+    fun failedSaveLeavesPreviousQueueIntact() {
+        // A save that cannot write its temp must not destroy the already-persisted queue.
+        val s = store()
+        s.save(PlaybackQueueStore.Snapshot(serverKey = "srv", songs = listOf(Song(id = "keep"))))
+        // Make the temp path unwritable by turning the .tmp target into a directory.
+        File(tmp.root, "playback_queue.json.tmp").mkdirs()
+        s.save(PlaybackQueueStore.Snapshot(serverKey = "srv", songs = listOf(Song(id = "new"))))
+        assertEquals("keep", s.load()!!.songs.single().id)
+    }
+
+    @Test
     fun rapidSnapshotsCompleteInLogicalOrder() = runBlocking {
         val completed = mutableListOf<String>()
         val writer = PlaybackQueueWriter(

@@ -79,6 +79,9 @@ class PlaybackQueueStore internal constructor(private val file: File) {
         val tmp = File(file.parentFile, "${file.name}.tmp")
         runCatching {
             tmp.writeText(json.encodeToString(Snapshot.serializer(), trimmed))
+            // Atomic replace: rename the fully-written temp over the target. Only if that fails
+            // (some filesystems reject rename-over-existing) delete the stale target and retry —
+            // the temp is already durable, so the queue is never left absent.
             if (!tmp.renameTo(file)) {
                 file.delete()
                 check(tmp.renameTo(file)) { "Cannot replace playback queue file" }
