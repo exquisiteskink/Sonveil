@@ -20,7 +20,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 
 /**
- * Media3 library callback: four Home-aligned browse roots + leaf play via
+ * Media3 library callback: four browse roots including the artist library + leaf play via
  * [PlayerController.adoptExternalQueue] + resolved stream MediaItems (opaque locators;
  * the player mints Subsonic stream URLs).
  *
@@ -83,7 +83,10 @@ class AutoLibraryCallback(
             )
         }
         val all = tree.childrenOf(normalized)
-        val sliced = AutoBrowsePaging.slice(all, page, pageSize)
+        val sliced = AutoBrowsePaging.forClient(
+            all, page, pageSize,
+            isCarHost = browser.uid != android.os.Process.myUid(),
+        )
             ?: return@futureResult LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
         LibraryResult.ofItemList(ImmutableList.copyOf(sliced), params)
     }
@@ -182,14 +185,14 @@ class AutoLibraryCallback(
         scope.coroutineContext.job.cancel()
     }
 
-    /**
-     * Root tab IDs (from the single source of truth in [AutoBrowseTree]) plus Home's children,
-     * so a logged-out client requesting a browse root gets AUTH_EXPIRED, not BAD_VALUE.
-     */
-    private fun rootTabIds(): Set<String> = buildSet {
-        addAll(AutoBrowseTree.rootOrder)
-        addAll(factory.homeChildIds())
-    }
+    private fun rootTabIds(): Set<String> = setOf(
+        AutoBrowseIds.PLAYLISTS,
+        AutoBrowseIds.RECENT,
+        AutoBrowseIds.FAVORITES,
+        AutoBrowseIds.NEWEST,
+        AutoBrowseIds.LIBRARY,
+        AutoBrowseIds.ARTISTS,
+    )
 
     private fun <T : Any> futureResult(block: suspend () -> LibraryResult<T>): ListenableFuture<LibraryResult<T>> {
         val future = SettableFuture.create<LibraryResult<T>>()

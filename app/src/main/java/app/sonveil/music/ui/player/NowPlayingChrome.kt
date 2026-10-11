@@ -85,7 +85,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.formatDurationMs
-import app.sonveil.music.ui.components.CoverArt
+import app.sonveil.music.ui.components.AlbumCoverArt
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.AuralisMotion
 import app.sonveil.music.ui.theme.LocalPalette
@@ -220,7 +220,7 @@ internal fun QueuePage(
             IconButton(onClick = onClose) {
                 Icon(Icons.Rounded.KeyboardArrowDown, "Back", tint = p.onBackground)
             }
-            CoverArt(ui.currentCoverArt, Modifier.size(44.dp), song.title, corner = 4.dp)
+            AlbumCoverArt(song.albumId, Modifier.size(44.dp), song.title, corner = 4.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(song.title, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
@@ -314,12 +314,11 @@ internal fun MiniBar(
             Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CoverArt(
-                ui.currentCoverArt,
+            AlbumCoverArt(
+                song.albumId,
                 Modifier.size(44.dp),
                 song.title,
                 corner = 2.dp,
-                retainPreviousOnChange = true,
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {

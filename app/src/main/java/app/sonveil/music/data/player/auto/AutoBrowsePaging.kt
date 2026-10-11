@@ -5,6 +5,12 @@ package app.sonveil.music.data.player.auto
  * pass page/pageSize; a non-positive pageSize means “return the full list”.
  */
 internal object AutoBrowsePaging {
+    /** Car hosts cannot request the remaining pages, so never truncate their artist index. */
+    fun <T> forClient(all: List<T>, page: Int, pageSize: Int, isCarHost: Boolean): List<T>? {
+        if (page < 0) return null
+        return if (isCarHost) all else slice(all, page, pageSize)
+    }
+
     fun <T> slice(all: List<T>, page: Int, pageSize: Int): List<T>? {
         if (page < 0) return null
         if (pageSize <= 0) return all

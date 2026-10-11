@@ -23,21 +23,9 @@ internal class AutoBrowseTree(
     }
 
     fun rootItem(): MediaItem = items.root()
-    /**
-     * Android Auto renders at most four root tabs (extra roots are dropped), so the root is
-     * Home / Artists / Albums / Playlists. Home groups the former Recently played, Favorites
-     * and Recently added tabs, whose IDs are unchanged.
-     */
-    fun rootChildren(): List<MediaItem> = AutoBrowseTree.rootOrder.map(::rootFolder)
-
-    fun homeChildren(): List<MediaItem> = listOf(items.recentRoot(), items.favoritesRoot(), items.newestRoot())
-
-    private fun rootFolder(id: String): MediaItem = when (id) {
-        AutoBrowseIds.HOME -> items.homeRoot()
-        AutoBrowseIds.ARTISTS -> items.artistsRoot()
-        AutoBrowseIds.ALBUMS -> items.albumsRoot()
-        else -> items.playlistsRoot()
-    }
+    fun rootChildren(): List<MediaItem> = listOf(
+        items.playlistsRoot(), items.recentRoot(), items.favoritesRoot(), items.libraryRoot(),
+    )
 
     /** True when the parent is the AA tab root (no server call required). */
     fun isRootId(parentId: String): Boolean = AutoBrowseIds.isRoot(parentId)
@@ -61,33 +49,40 @@ internal class AutoBrowseTree(
         val parent = AutoBrowseIds.normalizeParentId(parentId)
         // Root tabs must load without waiting on login so AA can paint the app after select.
         if (AutoBrowseIds.isRoot(parent)) return rootChildren()
-        if (parent == AutoBrowseIds.HOME) return homeChildren()
         if (!ensureCredentials()) return emptyList()
-        AutoBrowseIds.parseArtistId(parent)?.let { artistId ->
-            return client.getArtist(artistId).album.map(items::album)
-        }
         return when (parent) {
-            AutoBrowseIds.ARTISTS -> client.getArtists().sortedBy { it.name.lowercase() }.map(items::artist)
-            AutoBrowseIds.ALBUMS -> allAlbums().map(items::album)
+            AutoBrowseIds.LIBRARY -> listOf(items.artistsRoot(), items.newestRoot())
+            // getArtists contains the complete Navidrome index; do not truncate the car library.
+            AutoBrowseIds.ARTISTS -> client.getArtists().map(items::artist)
             AutoBrowseIds.PLAYLISTS -> client.getPlaylists().map(items::playlist)
             AutoBrowseIds.RECENT -> client.getAlbumList2("recent", 48).map(items::album)
             AutoBrowseIds.NEWEST -> client.getAlbumList2("newest", 48).map(items::album)
-            else -> items.playableSongs(songsIn(parent), parent)
+            else -> AutoBrowseIds.parseArtistId(parent)?.let { artistId ->
+                client.getArtist(artistId).album.map(items::album)
+            } ?: items.playableSongs(songsIn(parent), parent)
         }
     }
 
     suspend fun item(mediaId: String): MediaItem? {
         val id = AutoBrowseIds.normalizeParentId(mediaId)
-        (rootChildren() + homeChildren()).firstOrNull { it.mediaId == id }?.let { return it }
+        rootChildren().firstOrNull { it.mediaId == id }?.let { return it }
+        if (id == AutoBrowseIds.ARTISTS) return items.artistsRoot()
+        // Keep old Recently added IDs usable for connected hosts after changing the tabs.
+        if (id == AutoBrowseIds.NEWEST) return items.newestRoot()
         if (AutoBrowseIds.isRoot(id)) return rootItem()
         if (!ensureCredentials()) return null
+        AutoBrowseIds.parseArtistId(id)?.let { artistId ->
+            val artist = client.getArtist(artistId)
+            return items.artist(ArtistID3(
+                id = artist.id,
+                name = artist.name,
+                coverArt = artist.coverArt,
+                albumCount = artist.albumCount,
+            ))
+        }
         AutoBrowseIds.parsePlaylistId(id)?.let { playlistId ->
             val pl = client.getPlaylist(playlistId)
             return items.playlist(Playlist(id = pl.id, name = pl.name, songCount = pl.songCount, coverArt = pl.coverArt))
-        }
-        AutoBrowseIds.parseArtistId(id)?.let { artistId ->
-            val artist = client.getArtist(artistId)
-            return items.artist(ArtistID3(id = artist.id, name = artist.name, coverArt = artist.coverArt, albumCount = artist.albumCount))
         }
         AutoBrowseIds.parseAlbumId(id)?.let { albumId ->
             val album = client.getAlbum(albumId)
@@ -95,17 +90,6 @@ internal class AutoBrowseTree(
         }
         val resolved = resolver.resolve(mediaId) ?: return null
         return items.song(resolved.songs[resolved.startIndex], resolved.parent, resolved.startIndex)
-    }
-
-    /** Alphabetical albums, fetched in server pages up to [MAX_ALBUMS] (AA lists are not infinite). */
-    private suspend fun allAlbums(): List<AlbumID3> {
-        val out = ArrayList<AlbumID3>()
-        while (out.size < MAX_ALBUMS) {
-            val page = client.getAlbumList2("alphabeticalByName", ALBUM_PAGE, out.size)
-            out += page
-            if (page.size < ALBUM_PAGE) break
-        }
-        return out.take(MAX_ALBUMS)
     }
 
     suspend fun resolveQueue(requested: List<MediaItem>, startIndex: Int): AutoQueueResolver.Queue? {
@@ -120,11 +104,5 @@ internal class AutoBrowseTree(
         if (songs.isEmpty()) return null
         voiceSongs = songs
         return AutoQueueResolver.Queue(songs, 0, AutoBrowseIds.VOICE)
-    }
-
-    companion object {
-        val rootOrder = listOf(AutoBrowseIds.HOME, AutoBrowseIds.ARTISTS, AutoBrowseIds.ALBUMS, AutoBrowseIds.PLAYLISTS)
-        private const val ALBUM_PAGE = 500
-        private const val MAX_ALBUMS = 1000
     }
 }

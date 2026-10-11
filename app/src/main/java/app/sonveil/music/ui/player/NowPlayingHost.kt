@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.formatDurationMs
-import app.sonveil.music.ui.components.CoverArt
+import app.sonveil.music.ui.components.AlbumCoverArt
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.AuralisMotion
 import app.sonveil.music.ui.theme.LocalPalette
@@ -331,15 +331,14 @@ private fun NowPlayingPage(
                         onClose = { showLyrics = false },
                     )
                 } else {
-                    CoverArt(
-                        coverId = ui.currentCoverArt,
+                    AlbumCoverArt(
+                        albumId = song.albumId,
                         modifier = Modifier
                             .fillMaxSize()
                             .shadow(22.dp, RoundedCornerShape(14.dp))
                             .clickable { showLyrics = true },
                         contentDescription = song.title,
                         corner = 14.dp,
-                        retainPreviousOnChange = true,
                     )
                 }
             }

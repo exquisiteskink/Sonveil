@@ -6,9 +6,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.sonveil.music.AuralisApp
+import app.sonveil.music.data.art.ArtOverrideStore
 import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.auth.StoredCredentials
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -22,6 +24,8 @@ class MediaArtworkLoaderTest {
     private fun withArtwork(block: (AuralisApp, String) -> Unit) {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as AuralisApp
         val previous = app.container.client.credentials
+        var cachedCover: File? = null
+        val overrides = ArtOverrideStore(app)
         val coverId = "instrumentation-art-${UUID.randomUUID()}"
         val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
         try {
@@ -30,11 +34,22 @@ class MediaArtworkLoaderTest {
                 check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
                 output.toByteArray()
             }
-            app.container.artOverrides.setAlbumOverride(coverId, bytes)
+            // Seed the same cache entry populated by the server's getCoverArt response.
+            // An old client override must not replace that server image.
+            val url = requireNotNull(app.container.client.coverUrl(coverId, 128))
+            cachedCover = File(app.cacheDir, "coverart-v2/${ArtOverrideStore.sanitizeId(url)}.img")
+                .apply { parentFile!!.mkdirs(); writeBytes(bytes) }
+            bitmap.eraseColor(Color.BLUE)
+            val localBytes = ByteArrayOutputStream().use { output ->
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
+                output.toByteArray()
+            }
+            overrides.setAlbumOverride(coverId, localBytes)
             block(app, coverId)
         } finally {
             bitmap.recycle()
-            app.container.artOverrides.clearAlbumOverride(coverId)
+            overrides.clearAlbumOverride(coverId)
+            cachedCover?.delete()
             app.container.client.credentials = previous
         }
     }

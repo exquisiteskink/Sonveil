@@ -1,7 +1,6 @@
 package app.sonveil.music
 
 import android.content.Context
-import app.sonveil.music.data.art.ArtOverrideStore
 import app.sonveil.music.data.auth.CredentialStore
 import app.sonveil.music.data.auth.StoredCredentials
 import app.sonveil.music.data.player.AudioOutputMonitor
@@ -28,7 +27,6 @@ class AppContainer(context: Context) {
     val downloads = OfflineDownloadManager(context.applicationContext, client, downloadStore, playerSettings)
     val player = PlayerController(context.applicationContext, client, downloadStore)
     val recentSearches = RecentSearchStore(context.applicationContext)
-    val artOverrides = ArtOverrideStore(context.applicationContext)
 
     init {
         outputs.start()

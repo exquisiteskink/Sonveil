@@ -78,6 +78,16 @@ class CoverArtContentProviderTest {
     }
 
     @Test
+    fun albumPathKeepsAlbumIdentitySeparateFromCoverIdentity() {
+        val path = CoverArtContentProvider.buildEncodedPath("album/id", 800, isAlbum = true)!!
+        val parsed = CoverArtContentProvider.parseEncodedPath(path)!!
+        assertEquals("album/id", parsed.coverId)
+        assertTrue(parsed.isAlbum)
+        assertEquals(false, CoverArtContentProvider.parseEncodedPath("/cover/800/album%2Fid")!!.isAlbum)
+        assertNull(CoverArtContentProvider.parseEncodedPath("/album/800/..%2Fetc"))
+    }
+
+    @Test
     fun authority_matchesApplicationIdSuffix() {
         assertEquals("app.sonveil.music.coverart", CoverArtContentProvider.AUTHORITY)
     }

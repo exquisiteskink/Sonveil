@@ -20,9 +20,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.ResolvingDataSource
 import app.sonveil.music.data.player.auto.AutoClientGate
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -68,6 +66,7 @@ import java.util.IdentityHashMap
 class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
     private var player: ExoPlayer? = null
     private var fadePlayer: ExoPlayer? = null
+    private lateinit var playbackCache: PlaybackCache
     private val pcmGates = IdentityHashMap<ExoPlayer, DvcPcmGate>()
     private val pcmEqs = IdentityHashMap<ExoPlayer, GraphicEqProcessor>()
     private val pcmGains = IdentityHashMap<ExoPlayer, ReplayGainProcessor>()
@@ -126,6 +125,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         override fun run() {
             updateAnchoredSinkPolicy()
             maybeStartCrossfade()
+            player?.let { updateSongPrefetch(it) }
             handler.postDelayed(this, 200)
         }
     }
@@ -138,6 +138,10 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
 
         // 1) Allocate sticky session at service start — NOT deferred to first prepare.
         stickySessionId = generateStickySessionId()
+
+        val client = (application as AuralisApp).container.client
+        playbackCache = PlaybackCache(this, client, OkHttpDataSource.Factory(client.http)
+            .setUserAgent("Sonveil/${app.sonveil.music.BuildConfig.VERSION_NAME}"))
 
         val exo = buildPlayer()
         player = exo
@@ -211,6 +215,15 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             }
         })
         exo.addListener(object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) {
+                if (this@PlaybackService.player !== exo) return
+                if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
+                        Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED,
+                        Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_PLAY_WHEN_READY_CHANGED)) {
+                    updateSongPrefetch(exo)
+                }
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (player !== exo) return
                 // Intentional track change: drop pending network retries for the prior item.
@@ -358,6 +371,28 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         })
     }
 
+    private fun updateSongPrefetch(exo: ExoPlayer) {
+        if (!exo.playWhenReady || exo.playbackState != Player.STATE_READY || exo.mediaItemCount == 0) {
+            playbackCache.prefetch(emptyList())
+            return
+        }
+        val fullyBuffered = exo.duration != C.TIME_UNSET && exo.bufferedPosition >= exo.duration
+        if (!fullyBuffered && exo.bufferedPosition - exo.currentPosition < 30_000L) {
+            // Let the audible stream build a cushion before sharing mobile bandwidth.
+            playbackCache.prefetch(emptyList())
+            return
+        }
+        val timeline = exo.currentTimeline
+        val uris = mutableListOf<android.net.Uri>()
+        var index = exo.currentMediaItemIndex
+        for (upcoming in 0 until 2) {
+            index = timeline.getNextWindowIndex(index, exo.repeatMode, exo.shuffleModeEnabled)
+            if (index == C.INDEX_UNSET || index == exo.currentMediaItemIndex) break
+            exo.getMediaItemAt(index).localConfiguration?.uri?.let { uris.add(it) }
+        }
+        playbackCache.prefetch(uris)
+    }
+
     private fun guardedPlayer(exo: ExoPlayer): DvcGuardedPlayer =
         DvcGuardedPlayer(exo, object : DvcGuardedPlayer.Guard {
             override fun beforeSeek(reason: String) = onGuardedSeek(exo, reason)
@@ -408,17 +443,8 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             val pos = exo.currentPosition.coerceAtLeast(0L)
             Log.i(TAG, "auto-retry prepare idx=$idx pos=$pos play=$play")
             runCatching {
-                // Refresh stream URI (fresh salt) then prepare — same recovery energy as
-                // playing a new album / PlayerController.reprepareFromQueue, without
-                // rebuilding ExoPlayer or touching sticky audioSessionId.
-                val item = exo.getMediaItemAt(idx)
-                val fresh = refreshMediaItemStreamUri(item)
-                if (fresh.localConfiguration?.uri != item.localConfiguration?.uri) {
-                    // Mute before seek flush (AudioTrack recreate) — does not touch sticky id.
-                    beginMuteUntilBound(exo, eqMain, reason = "error-retry-seek")
-                    exo.replaceMediaItem(idx, fresh)
-                    exo.seekTo(idx, pos)
-                }
+                // Each upstream open resolves fresh authentication. Replacing the item
+                // here resets the retry budget through playlist/transition callbacks.
                 exo.prepare()
                 if (play) {
                     muteHeldForPause = false
@@ -431,22 +457,6 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         }
         errorRetryRunnable = r
         handler.postDelayed(r, delayMs)
-    }
-
-    /**
-     * Rebuild remote stream URI from mediaId + current credentials.
-     * Local/offline URIs are left unchanged. Does not touch audio session / EQ.
-     */
-    private fun refreshMediaItemStreamUri(item: MediaItem): MediaItem {
-        val id = item.mediaId
-        if (id.isNullOrBlank()) return item
-        val uri = item.localConfiguration?.uri ?: return item
-        val scheme = uri.scheme?.lowercase()
-        if (scheme == "file" || scheme == "content") return item
-        val client = (application as AuralisApp).container.client
-        if (client.credentials == null) return item
-        val maxBr = if (PlaybackStreamUri.songId(uri) != null) PlaybackStreamUri.bitrate(uri) else uri.getQueryParameter("maxBitRate")?.toIntOrNull() ?: 0
-        return item.buildUpon().setUri(PlaybackStreamUri.build(id, maxBr, java.util.UUID.randomUUID().toString())).build()
     }
 
     private fun cancelErrorRetryCallback() {
@@ -541,6 +551,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             release()
         }
         fadePlayer?.release()
+        if (::playbackCache.isInitialized) playbackCache.release()
         pcmGates.clear()
         pcmEqs.clear()
         pcmGains.clear()
@@ -558,8 +569,6 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
      * prepare / setMediaItems that create an AudioTrack.
      */
     private fun buildPlayer(handleAudioFocus: Boolean = true): ExoPlayer {
-        val http = OkHttpDataSource.Factory((application as AuralisApp).container.client.http)
-            .setUserAgent("Sonveil/${app.sonveil.music.BuildConfig.VERSION_NAME}")
         val gate = DvcPcmGate { flushed -> handler.post { onPcmGateFlushed(flushed) } }.apply {
             if (dualPlayerCfBlocked) enable() else disable()
         }
@@ -579,16 +588,12 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         val exo = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(this)
-                    .setDataSourceFactory(ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
-                        val id = PlaybackStreamUri.songId(spec.uri)
-                        if (id == null) spec else spec.withUri(android.net.Uri.parse(
-                            (application as AuralisApp).container.client.streamUrl(id, PlaybackStreamUri.bitrate(spec.uri)),
-                        ))
-                    }),
+                    .setDataSourceFactory(playbackCache.dataSourceFactory),
             )
             .setLoadControl(
                 DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(15_000, 50_000, 1_000, 2_000)
+                    .setBufferDurationsMs(30_000, 120_000, 1_000, 3_000)
+                    .setPrioritizeTimeOverSizeThresholds(true)
                     .build(),
             )
             .setAudioAttributes(
@@ -1032,9 +1037,8 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         if (existing != null && pendingNextIndex == nextIndex) return
         releasePendingFadePlayer()
 
-        // Refresh stream URIs before CF prepare so the next track is not an
-        // enqueue-time URL (owner: dies after ~2 songs; new album recovers).
-        val items = (0 until from.mediaItemCount).map { refreshMediaItemStreamUri(from.getMediaItemAt(it)) }
+        // The shared data source resolves fresh authentication for crossfade opens.
+        val items = (0 until from.mediaItemCount).map(from::getMediaItemAt)
         val next = buildPlayer(handleAudioFocus = false)
         // buildPlayer already set stickySessionId. Re-assert before prepare; if sticky
         // generation failed, share primary session (Option A / #23 absorb).
@@ -1152,6 +1156,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         session?.player = guardedPlayer(next)
         applyGapless(next)
         installPlayerListeners(next)
+        updateSongPrefetch(next)
         // If dual CF somehow ran under external-EQ risk (race / gate miss), mute
         // until settle before RG→1f across outgoing AudioTrack teardown.
         // Normal dual-CF (no external EQ) restores RG immediately — no promote dip.
