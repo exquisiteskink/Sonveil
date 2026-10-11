@@ -20,4 +20,15 @@ class AutoBrowsePagingTest {
     @Test fun negativePageRejected() {
         assertNull(AutoBrowsePaging.slice(listOf(1), page = -1, pageSize = 10))
     }
+
+    @Test fun carHostReceivesEveryArtistEvenWithSmallPositivePageSize() {
+        val allArtists = (0 until 1500).toList()
+        assertEquals(allArtists, AutoBrowsePaging.forClient(allArtists, 0, 50, isCarHost = true))
+    }
+
+    @Test fun phoneClientRetainsPaginationAndInvalidPageIsRejected() {
+        val all = (0 until 100).toList()
+        assertEquals((20 until 40).toList(), AutoBrowsePaging.forClient(all, 1, 20, isCarHost = false))
+        assertNull(AutoBrowsePaging.forClient(all, -1, 20, isCarHost = true))
+    }
 }

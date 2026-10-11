@@ -9,7 +9,7 @@ Sonveil is a **media-category** Android Auto app: Media3 `MediaLibraryService` +
 | App list label | `android:label` → `@string/app_name` → **Sonveil** |
 | App list icon | `@mipmap/ic_launcher` |
 | Package identity | `applicationId` / namespace `app.sonveil.music` |
-| Browse tabs | Home (Recently played, Favorites, Recently added), Artists → albums, Albums (A–Z, up to 1000), Playlists |
+| Browse tabs | Playlists, Recently played, Favorites, Library |
 | Attribution icon | Monochrome `@drawable/ic_stat_auralis` on media cards |
 
 Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** shown in the AA drawer.
@@ -23,9 +23,10 @@ Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** 
    - `android.media.browse.MediaBrowserService`
 3. `AutoLibraryCallback` returns a root immediately; root children (four browsable tabs: Home, Artists, Albums, Playlists; AA shows at most four) do not require login.
 4. Car hosts (`com.google.android.projection.gearhead`, Automotive media, Assistant) are allowlisted so browse+play works even when Media3 `isTrusted` is false on a device build. An allowlisted name is accepted only when that package is a system image app, shares a signer with Play services or the Play Store, or matches the known Android Auto production certificate. A sideloaded package that only copies the name is rejected.
-5. Playlist / album / song artwork uses `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider` using signed capabilities for each account, cover and size (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. Session keeps `CacheBitmapLoader(SimpleBitmapLoader())`.
+5. Artist / playlist / album / song artwork uses the server's cover-art IDs through `content://app.sonveil.music.coverart/…` via `CoverArtContentProvider`, using signed capabilities for each account, cover and size (Android Auto rejects HTTP artwork URIs). Root tab icons stay on `android.resource://`. The session uses `ServerArtworkBitmapLoader(DataSourceBitmapLoader(context))` to resolve local URIs and retry failed artwork requests. Navidrome artwork remains authoritative when audio files contain different embedded images.
 6. Assistant and Gemini play-from-search requests resolve through `AutoVoiceSearch` using the signed-in Subsonic library. Empty requests play favorites or the latest recent album; explicit song, album, artist, playlist and genre requests use the matching server APIs. Voice playback must use the media service and pass its controller authorization; the phone activity does not execute legacy `MEDIA_PLAY_FROM_SEARCH` intents.
 7. Playable item URIs are `sonveil://stream` locators. `PlaybackService` resolves them to authenticated Subsonic stream URLs inside the player, so session controllers do not receive API keys or salted tokens.
+8. **Library → All artists** loads the complete server artist index, with no fixed artist-count limit. Selecting an artist opens its server albums; selecting an album opens its songs and uses the existing album queue. **Library → Recently added** retains the previous newest-album view. Existing Recently added IDs remain resolvable for connected hosts. Keeping four root tabs follows the [Android Auto / AAOS content hierarchy requirements](https://developer.android.com/training/cars/media/create-media-browser/content-hierarchy).
 
 Car App Library (`androidx.car.app`) is **not** required for drawer presence for media apps.
 
@@ -33,7 +34,7 @@ Car App Library (`androidx.car.app`) is **not** required for drawer presence for
 
 ### A) Sideload / GitHub APK / DHU
 
-1. Install Sonveil 1.3.10 or later (`app.sonveil.music`); earlier APKs lack the merged Android Auto menu fix. A new build from this branch also includes voice search.
+1. Install Sonveil 1.3.10 or later (`app.sonveil.music`); earlier APKs lack the merged Android Auto menu fix. A new build from this branch also includes voice search and artist browsing.
 2. Open **Android Auto** app settings → tap **Version** ~10× → enable developer mode.
 3. Developer settings → enable **Unknown sources**.
 4. Optional: run Desktop Head Unit against the phone (see [Test using the DHU](https://developer.android.com/training/cars/testing/dhu)).
@@ -54,9 +55,14 @@ Without Unknown sources, sideloaded media apps stay out of the AA app list even 
 - Voice requests need the phone to reach the music server, except when the requested tracks are already playing. Validate query wording and server search behavior with a real device.
 - **Menu / launcher presence is not claimed as fully closed without DHU or vehicle confirmation.** Unit tests and `assembleDebug` cover code + packaging only; owner should validate once on DHU or a car after install (Unknown sources or Play track).
 - Cover art downloads happen lazily in `CoverArtContentProvider.openFile`; first browse may show placeholders until cache fills.
+- Artist and album browsing needs a server connection. Android Auto decides how much scrolling is available while driving; the app supplies the complete artist index, but the car can restrict visible browsing. Check **Library → All artists → artist → album → song** while parked, then verify track changes and artwork on a real head unit.
 - DVC / Poweramp EQ / ReplayGain paths are unchanged by the Auto menu work.
 - If a legitimate Android Auto or Assistant build is signed with a key that is neither a system image, the pinned production cert, nor the Play services / Play Store signer, browse will fail closed. Add that cert digest to `AutoClientGate.pinnedCertSha256` rather than dropping the check.
 
 ## Related research
 
 See [AA-MENU-RESEARCH.md](./AA-MENU-RESEARCH.md) (checklist + gap analysis).
+
+[DSub's media browser](https://github.com/daneren2005/Subsonic/blob/master/app/src/main/java/github/daneren2005/dsub/service/AutoMediaBrowserService.java) similarly exposes a library with browsable artist entries leading into their music directories. Sonveil uses the ID3 artist and album endpoints so this hierarchy matches Navidrome's tagged library.
+
+Playback artwork resolves the current track’s album through the server and uses that album’s cover, matching Now Playing and the album screen. Album artwork lookup and image fetching run on image-loader/provider workers, independently of audio playback. Missing album covers display a placeholder instead of a different track cover.

@@ -251,7 +251,7 @@ class SubsonicClient(
             .toString()
     }
 
-    fun streamUrl(songId: String, maxBitRate: Int = 0): String {
+    fun streamUrl(songId: String, maxBitRate: Int = 0, credentials: StoredCredentials? = this.credentials): String {
         val extra = mutableMapOf(
             "id" to songId,
         )
@@ -263,7 +263,7 @@ class SubsonicClient(
         // Fresh salt/token per URL — Subsonic token auth does not expire, but a unique
         // query string forces a new DataSource open when MediaItems are rebuilt on
         // transition / Retry (same recovery energy as playing a new album).
-        return buildUrl("stream", extra, session = false).toString()
+        return buildUrl("stream", extra, session = false, creds = credentials ?: throw SubsonicException(40, "Not signed in")).toString()
     }
 
     /**

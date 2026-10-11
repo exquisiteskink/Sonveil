@@ -1,6 +1,8 @@
 package app.sonveil.music.ui.components
 
 import android.net.Uri
+import app.sonveil.music.data.art.CoverArtContentProvider
+
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -45,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
@@ -53,7 +56,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -116,57 +118,68 @@ fun CoverArt(
     corner: Dp = 8.dp,
     fallback: ImageVector = Icons.Rounded.Album,
     imageUrl: String? = null,
-    retainPreviousOnChange: Boolean = false,
-    localUri: Uri? = null,
-    localCacheKey: String? = null,
+    artworkUri: Uri? = null,
 ) {
     val client = LocalClient.current
     val context = LocalContext.current
     val p = LocalPalette.current
     val credentials = client.credentials
-    val sources = remember(client, credentials, coverId, imageUrl, localUri) {
+    val sources = remember(client, credentials, coverId, imageUrl, artworkUri) {
         val url = allowedArtworkUrl(imageUrl, credentials?.serverUrl)
-        listOfNotNull(localUri, url, client.coverUrl(coverId, 600)).distinct()
+        if (artworkUri != null) listOf(artworkUri)
+        else listOfNotNull(url, client.coverUrl(coverId, 600)).distinct()
     }
-    var sourceIndex by remember(sources, localCacheKey) { mutableStateOf(0) }
+    var sourceIndex by remember(sources) { mutableStateOf(0) }
     val source = sources.getOrNull(sourceIndex)
-    var imageLoaded by remember(source, localCacheKey) { mutableStateOf(false) }
-    val request = remember(context, source, localUri, localCacheKey) {
+    var imageLoaded by remember(source) { mutableStateOf(false) }
+    val request = remember(context, source) {
         ImageRequest.Builder(context)
             .data(source)
-            .apply { if (source != null && source == localUri) memoryCacheKey(localCacheKey) }
             .build()
     }
     val shape = if (corner >= 48.dp) CircleShape else RoundedCornerShape(corner)
-    var previousPainter by remember(credentials, retainPreviousOnChange) { mutableStateOf<Painter?>(null) }
     Box(
         modifier
             .clip(shape)
             .background(p.surfaceHigh.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
     ) {
-        if (!imageLoaded && (!retainPreviousOnChange || previousPainter == null)) {
+        if (!imageLoaded) {
             Icon(fallback, if (source == null) contentDescription else null,
                 tint = p.onSurface.copy(alpha = 0.35f), modifier = Modifier.size(36.dp))
         }
         if (source != null) {
-            AsyncImage(
-                model = request,
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                placeholder = if (retainPreviousOnChange) previousPainter else null,
-                onSuccess = {
-                    imageLoaded = true
-                    if (retainPreviousOnChange) previousPainter = it.painter
-                },
-                onError = {
-                    previousPainter = null
-                    sourceIndex += 1
-                },
-            )
+            key(source) {
+                AsyncImage(
+                    model = request,
+                    contentDescription = contentDescription,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    onSuccess = {
+                        imageLoaded = true
+                    },
+                    onError = {
+                        sourceIndex += 1
+                    },
+                )
+            }
         }
     }
+}
+
+/** Playback uses the album's server artwork, including in the compact player. */
+@Composable
+fun AlbumCoverArt(
+    albumId: String?,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    corner: Dp = 8.dp,
+) {
+    val client = LocalClient.current
+    val art = CoverArtContentProvider.authorizedAlbumContentUri(
+        albumId, 800, client.credentials, client.artworkNamespace,
+    )
+    CoverArt(null, modifier, contentDescription, corner, artworkUri = art)
 }
 
 @Composable

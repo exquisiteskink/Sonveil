@@ -56,14 +56,8 @@ data class PlayerUiState(
     val upcomingIndices: List<Int>? = null,
     val playbackError: String? = null,
     val lyrics: SongLyrics? = null,
-    val artworkSongId: String? = null,
-    val artworkCoverId: String? = null,
 ) {
     val current: Song? get() = queue.getOrNull(index)
-    val currentCoverArt: String?
-        get() = current?.let { song ->
-            if (artworkSongId == song.id) artworkCoverId ?: song.coverArt else song.coverArt
-        }
     val upNextIndices: List<Int> get() = upcomingIndices ?: ((index + 1) until queue.size).toList()
     val upNext: List<Song> get() = upNextIndices.mapNotNull(queue::getOrNull)
     fun isFavorite(song: Song): Boolean = favoriteById[song.id] ?: song.isFavorite
@@ -97,7 +91,6 @@ class PlayerController(
     private var connection: ListenableFuture<MediaController>? = null
     private var artworkJob: Job? = null
     private var lyricsJob: Job? = null
-    private val albumCoverCache = mutableMapOf<String, String>()
     private val favoriteInFlight = mutableSetOf<String>()
     private var positionJob: Job? = null
     private var scrobbledId: String? = null
@@ -227,7 +220,6 @@ class PlayerController(
         scope.coroutineContext.cancelChildren()
         artworkJob = null
         lyricsJob = null
-        albumCoverCache.clear()
         favoriteInFlight.clear()
         connection?.let { MediaController.releaseFuture(it) }
         connection = null
@@ -695,21 +687,12 @@ class PlayerController(
 
     private fun refreshArtwork(song: Song) {
         artworkJob?.cancel()
-        _state.update { it.copy(artworkSongId = song.id, artworkCoverId = song.coverArt) }
+        // Resolve the same album cover URI as the session and Android Auto.
+        // Artwork loading only supplies UI colors and never changes track metadata.
+        resetPalette()
         artworkJob = scope.launch {
-            val coverId = song.albumId?.let { albumId ->
-                albumCoverCache[albumId] ?: try {
-                    client.getAlbum(albumId).coverArt?.also { albumCoverCache[albumId] = it }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    null
-                }
-            } ?: song.coverArt
-            if (_state.value.current?.id != song.id) return@launch
-            _state.update { it.copy(artworkSongId = song.id, artworkCoverId = coverId) }
             val palette = try {
-                loadArtwork(coverId)
+                loadArtwork(song.albumId)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -722,10 +705,12 @@ class PlayerController(
         }
     }
 
-    private suspend fun loadArtwork(coverId: String?): AuralisPalette? {
-        val url = client.coverUrl(coverId, 800) ?: return null
+    private suspend fun loadArtwork(albumId: String?): AuralisPalette? {
+        val uri = CoverArtContentProvider.authorizedAlbumContentUri(
+            albumId, 800, client.credentials, client.artworkNamespace,
+        ) ?: return null
         // Palette extraction needs a small software bitmap, not full-size cover art.
-        val req = ImageRequest.Builder(context).data(url).size(256).allowHardware(false).build()
+        val req = ImageRequest.Builder(context).data(uri).size(256).allowHardware(false).build()
         val result = context.imageLoader.execute(req)
         if (result is SuccessResult) {
             val bmp = (result.drawable as? BitmapDrawable)?.bitmap ?: return null
@@ -839,8 +824,8 @@ class PlayerController(
     }
 
     private fun Song.toMediaItem(): MediaItem {
-        val art = CoverArtContentProvider.authorizedContentUri(
-            coverArt, 800, client.credentials, client.artworkNamespace,
+        val art = CoverArtContentProvider.authorizedAlbumContentUri(
+            albumId, 800, client.credentials, client.artworkNamespace,
         )
         val localUri = downloadStore?.let { store ->
             val creds = client.credentials ?: return@let null

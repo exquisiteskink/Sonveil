@@ -36,6 +36,7 @@ Verified against the current codebase (v1.3.13):
 - Home shelves for playlist shortcuts, recently played, and recently added albums
 - Queue with play, shuffle (keeps the current song first), repeat, and Up Next (swipe or control)
 - Stream **original files** by default, or optional server-side transcoding
+- Shared temporary playback cache for phone, Android Auto, and crossfade; up to 256 MiB with automatic eviction, separate from saved offline downloads
 - Gapless playback; crossfade when gapless is enabled
 - ReplayGain (track / album) with optional peak limiter
 - Sleep timer (15 / 30 / 45 / 60 minutes or end of track), reboot-safe
@@ -49,7 +50,7 @@ Verified against the current codebase (v1.3.13):
 - Download albums or playlists; resume interrupted transfers; Wi‑Fi-only option for hi-res fetches
 - Play saved tracks with no network
 - Notification, lock screen, and Bluetooth media controls
-- **Android Auto**: app-list presence, browse (playlists / recently played / favorites / recently added), local cover art, and voice play-from-search — see [Android Auto setup](docs/android-auto.md) for sideloaded APKs
+- **Android Auto**: browse playlists, recently played, favorites, and Library → All artists → albums → songs; Navidrome cover art and voice play-from-search — see [Android Auto setup](docs/android-auto.md) for sideloaded APKs
 
 ### Privacy by design
 - Talks only to **your** server — no analytics, crash reporters, or third-party trackers in the app

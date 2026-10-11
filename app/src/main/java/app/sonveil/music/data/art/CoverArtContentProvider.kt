@@ -13,6 +13,7 @@ import java.io.FileNotFoundException
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.runBlocking
 
 /**
  * Exposes Subsonic cover art as local `content://` URIs for Android Auto / AAOS.
@@ -32,6 +33,8 @@ class CoverArtContentProvider : ContentProvider() {
         CoverArtCache(File(context.cacheDir, "coverart-v2"), app.container.client.http)
     }
 
+    private val albumCoverIds = AlbumCoverIds()
+
     override fun onCreate(): Boolean = true
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
@@ -47,22 +50,25 @@ class CoverArtContentProvider : ContentProvider() {
         val namespace = container.client.artworkNamespace
         val account = accountScope(credentials, namespace)
         if (parsed.accountScope != account || !ArtworkAccess.permits(
-                namespace, account, parsed.coverId, parsed.size, uri.getQueryParameter("access"),
+                if (parsed.isAlbum) "$namespace:album" else namespace, account, parsed.coverId, parsed.size, uri.getQueryParameter("access"),
             )) {
             throw FileNotFoundException("Artwork access denied")
         }
 
-        // Prefer client-only album override when cover id matches an album override key.
-        container.artOverrides.getAlbumOverrideUri(parsed.coverId)?.path?.let { path ->
-            val override = File(path)
-            if (override.isFile && override.length() > 0L) {
-                return ParcelFileDescriptor.open(override, ParcelFileDescriptor.MODE_READ_ONLY)
-            }
-        }
-
-        val url = container.client.coverUrl(parsed.coverId, parsed.size, credentials)
-            ?: throw FileNotFoundException("Not signed in or missing cover id")
         return try {
+            val coverId = if (parsed.isAlbum) {
+                albumCoverIds.resolve(account, parsed.coverId) {
+                    // openFile runs on the image loader / content provider worker,
+                    // never the playback thread. Fetch the exact album screen cover.
+                    val cover = runBlocking { container.client.getAlbum(parsed.coverId).coverArt }
+                    if (container.client.artworkNamespace != namespace) {
+                        throw FileNotFoundException("Artwork account changed")
+                    }
+                    cover
+                }
+            } else parsed.coverId
+            val url = container.client.coverUrl(coverId, parsed.size, credentials)
+                ?: throw FileNotFoundException("Album cover not available")
             cache.withFile(url) { file ->
                 ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             }
@@ -96,8 +102,9 @@ class CoverArtContentProvider : ContentProvider() {
     companion object {
         const val AUTHORITY = "app.sonveil.music.coverart"
         private const val PATH_COVER = "cover"
+        private const val PATH_ALBUM = "album"
 
-        data class CoverRef(val coverId: String, val size: Int, val accountScope: String? = null)
+        data class CoverRef(val coverId: String, val size: Int, val accountScope: String? = null, val isAlbum: Boolean = false)
 
         /** Separate host-side artwork caches without exposing credentials in content URIs. */
         fun accountScope(credentials: StoredCredentials, namespace: String): String = ArtOverrideStore.sanitizeId(
@@ -109,8 +116,8 @@ class CoverArtContentProvider : ContentProvider() {
          * Build a content URI for [coverId] without downloading.
          * Returns null when [coverId] is blank.
          */
-        fun contentUri(coverId: String?, size: Int = 400, accountScope: String? = null, accessToken: String? = null): Uri? {
-            val path = buildEncodedPath(coverId, size) ?: return null
+        fun contentUri(coverId: String?, size: Int = 400, accountScope: String? = null, accessToken: String? = null, isAlbum: Boolean = false): Uri? {
+            val path = buildEncodedPath(coverId, size, isAlbum) ?: return null
             return Uri.Builder()
                 .scheme(ContentResolver.SCHEME_CONTENT)
                 .authority(AUTHORITY)
@@ -131,6 +138,13 @@ class CoverArtContentProvider : ContentProvider() {
             return contentUri(coverId, size, account, ArtworkAccess.token(namespace, account, coverId, size))
         }
 
+        /** Resolve the server album cover lazily, shared by phone, notification and Auto. */
+        fun authorizedAlbumContentUri(albumId: String?, size: Int, credentials: StoredCredentials?, namespace: String): Uri? {
+            if (albumId.isNullOrBlank() || credentials == null) return null
+            val account = accountScope(credentials, namespace)
+            return contentUri(albumId, size, account, ArtworkAccess.token("$namespace:album", account, albumId, size), isAlbum = true)
+        }
+
         fun parse(uri: Uri): CoverRef? {
             if (uri.scheme != ContentResolver.SCHEME_CONTENT) return null
             if (uri.authority != AUTHORITY) return null
@@ -138,18 +152,19 @@ class CoverArtContentProvider : ContentProvider() {
         }
 
         /** Pure helper for unit tests: `/cover/{size}/{urlEncodedCoverId}`. */
-        fun buildEncodedPath(coverId: String?, size: Int): String? {
+        fun buildEncodedPath(coverId: String?, size: Int, isAlbum: Boolean = false): String? {
             if (coverId.isNullOrBlank()) return null
             val safeSize = size.coerceIn(32, 2048)
             val encodedId = URLEncoder.encode(coverId.trim(), StandardCharsets.UTF_8.name())
                 .replace("+", "%20")
-            return "/$PATH_COVER/$safeSize/$encodedId"
+            val kind = if (isAlbum) PATH_ALBUM else PATH_COVER
+            return "/$kind/$safeSize/$encodedId"
         }
 
         fun parseEncodedPath(encodedPath: String?): CoverRef? {
             if (encodedPath.isNullOrBlank()) return null
             val parts = encodedPath.trim('/').split('/', limit = 3)
-            if (parts.size != 3 || parts[0] != PATH_COVER) return null
+            if (parts.size != 3 || parts[0] !in listOf(PATH_COVER, PATH_ALBUM)) return null
             val size = parts[1].toIntOrNull()?.coerceIn(32, 2048) ?: return null
             val coverId = try {
                 URLDecoder.decode(parts[2], StandardCharsets.UTF_8.name()).trim()
@@ -157,7 +172,7 @@ class CoverArtContentProvider : ContentProvider() {
                 return null
             }
             if (coverId.isEmpty() || coverId.contains("..")) return null
-            return CoverRef(coverId, size)
+            return CoverRef(coverId, size, isAlbum = parts[0] == PATH_ALBUM)
         }
     }
 }

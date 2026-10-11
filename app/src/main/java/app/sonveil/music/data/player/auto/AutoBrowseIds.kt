@@ -9,11 +9,9 @@ object AutoBrowseIds {
     const val RECENT = "sonveil_recent"
     const val FAVORITES = "sonveil_favorites"
     const val NEWEST = "sonveil_newest"
-    const val VOICE = "sonveil_voice"
+    const val LIBRARY = "sonveil_library"
     const val ARTISTS = "sonveil_artists"
-    const val ALBUMS = "sonveil_albums"
-    /** "Home" tab grouping recent / recently added / favorites so the root stays at four tabs. */
-    const val HOME = "sonveil_home"
+    const val VOICE = "sonveil_voice"
     const val EXTRA_PARENT = "sonveil.parent_id"
 
     /** Pre-rebrand browse IDs (PR #8). Still accepted so in-flight Auto sessions keep resolving. */
@@ -47,10 +45,10 @@ object AutoBrowseIds {
     fun playlist(id: String) = "playlist/${encode(id)}"
     fun album(id: String) = "album/${encode(id)}"
     fun artist(id: String) = "artist/${encode(id)}"
-    fun parseArtistId(mediaId: String): String? = parseFolder(mediaId, "artist/")
     fun song(id: String, parent: String, index: Int) = "song/${encode(parent)}/$index/${encode(id)}"
     fun parsePlaylistId(mediaId: String): String? = parseFolder(mediaId, "playlist/")
     fun parseAlbumId(mediaId: String): String? = parseFolder(mediaId, "album/")
+    fun parseArtistId(mediaId: String): String? = parseFolder(mediaId, "artist/")
     private fun parseFolder(id: String, prefix: String): String? =
         id.takeIf { it.startsWith(prefix) }?.removePrefix(prefix)?.let(::decode)?.takeIf { it.isNotEmpty() }
 
