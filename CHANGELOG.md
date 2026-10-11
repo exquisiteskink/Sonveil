@@ -1,11 +1,30 @@
 # Changelog
 
-## Unreleased
+## 1.3.14 — 2026-10-10
 
-### Changed
-- Complete active Sonveil branding for the application class, theme, palette, motion, and notification icon; update callers, tests, and Android manifests.
-- Preserve legacy preference files, Android Keystore aliases, notification channel IDs, media metadata keys, and Android Auto IDs so upgrades retain settings, credentials, and connected-session compatibility.
-- Keep the existing signing certificate: its historical subject and keystore alias do not affect the Sonveil application name, and changing the key would break installed-app upgrades.
+### What's new
+- Sonveil keeps up to 256 MB of recently streamed music to reuse during playback. This temporary cache is separate from music you choose to download.
+- Album artwork is shared more consistently between the phone player, notifications, and Android Auto.
+- Android Auto now has Playlists, Recently played, Favorites, and Library sections. In Library, browse artists, their albums, and the songs on each album.
+
+### Fixes
+- Album artwork requests no longer hold up unrelated artwork lookups while waiting for the server.
+- Signing back into the same account no longer invalidates artwork links already used by Android Auto.
+- Playback handles sign-out during loading as a temporary error rather than leaving the player stuck with a permanent error.
+- Fix an equalizer timing issue that could apply audio filters to the wrong channel.
+- Audio formats unsupported by the DVC safety filter now bypass that filter instead of stopping playback.
+- Equalizer settings survive restarts on phones whose language uses commas in decimal numbers.
+- Batch downloads do their file work away from the screen's main thread to reduce freezes.
+- If the download list becomes damaged, Sonveil keeps a copy for recovery instead of silently discarding it. Automatic recovery of that list is not included.
+
+### Cleanup
+- Complete the Sonveil naming cleanup in the active app code, themes, and notification icon.
+- Keep existing saved settings, credentials, compatibility IDs, and signing identity so the naming cleanup does not break upgrades.
+
+### Validation
+- All 146 release-build unit tests passed; release lint reported no errors (36 warnings and 6 informational findings).
+- Release APK signature, alignment, version, and non-debuggable packaging were verified; signing certificate matches the published 1.3.13 APK.
+- The instrumentation-test APK built, but device tests were not run. Phone launch, on-device visuals, connected Android Auto, and external Poweramp EQ/Wavelet were not tested.
 
 ## 1.3.13 — 2026-10-09
 
