@@ -5,7 +5,7 @@ import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.sonveil.music.AuralisApp
+import app.sonveil.music.SonveilApp
 import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.auth.StoredCredentials
 import app.sonveil.music.data.player.auto.AutoMediaItemFactory
@@ -29,8 +29,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AlbumPlaybackArtworkTest {
-    private fun withServer(failFirstAlbum: Boolean = false, block: (AuralisApp, MockWebServer, AtomicInteger) -> Unit) {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as AuralisApp
+    private fun withServer(failFirstAlbum: Boolean = false, block: (SonveilApp, MockWebServer, AtomicInteger) -> Unit) {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as SonveilApp
         val previous = app.container.client.credentials
         val albumRequests = AtomicInteger()
         val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }

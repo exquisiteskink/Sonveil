@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-class AuralisApp : Application(), ImageLoaderFactory {
+class SonveilApp : Application(), ImageLoaderFactory {
     lateinit var container: AppContainer
         private set
 
@@ -19,7 +19,7 @@ class AuralisApp : Application(), ImageLoaderFactory {
         super.onCreate()
         instance = this
         container = AppContainer(this)
-        appScope.launch { AutoEqCatalog.load(this@AuralisApp) }
+        appScope.launch { AutoEqCatalog.load(this@SonveilApp) }
     }
 
     override fun newImageLoader(): ImageLoader =
@@ -31,7 +31,7 @@ class AuralisApp : Application(), ImageLoaderFactory {
             .build()
 
     companion object {
-        lateinit var instance: AuralisApp
+        lateinit var instance: SonveilApp
             private set
     }
 }

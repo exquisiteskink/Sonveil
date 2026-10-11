@@ -5,7 +5,7 @@ import android.graphics.Color
 import androidx.media3.common.util.UnstableApi
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.sonveil.music.AuralisApp
+import app.sonveil.music.SonveilApp
 import app.sonveil.music.data.art.ArtOverrideStore
 import app.sonveil.music.data.art.CoverArtContentProvider
 import app.sonveil.music.data.auth.StoredCredentials
@@ -21,8 +21,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @UnstableApi
 class MediaArtworkLoaderTest {
-    private fun withArtwork(block: (AuralisApp, String) -> Unit) {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as AuralisApp
+    private fun withArtwork(block: (SonveilApp, String) -> Unit) {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as SonveilApp
         val previous = app.container.client.credentials
         var cachedCover: File? = null
         val overrides = ArtOverrideStore(app)

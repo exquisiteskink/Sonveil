@@ -9,7 +9,7 @@ import androidx.compose.animation.core.tween
  * Shared motion tokens — Material-ish decelerate, longer than Compose defaults
  * so nav / sheet / palette feel less snappy.
  */
-object AuralisMotion {
+object SonveilMotion {
     /** Soft landing (Material emphasized decelerate). */
     val EmphasizedDecelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
 

@@ -232,6 +232,7 @@ class PlayerSettings(context: Context) {
     }
 
     companion object {
+        // Keep the legacy preference file so upgrades retain playback and appearance settings.
         const val PREFS = "auralis_prefs"
         const val RG_MODE = "rg_mode"
         const val RG_LIMIT = "rg_limit"
@@ -261,6 +262,7 @@ class PlayerSettings(context: Context) {
             EQ_ON, EQ_PRESET, EQ_GAINS, EQ_MODE,
             EQ_PREAMP_GRAPHIC, EQ_PREAMP_PARAMETRIC, EQ_FILTERS, EQ_HEADPHONE,
         )
+        // Keep legacy metadata keys shared by playback components for compatibility.
         const val EXTRA_RG_TRACK = "auralis.rg.track"
         const val EXTRA_RG_ALBUM = "auralis.rg.album"
         const val EXTRA_RG_TRACK_PEAK = "auralis.rg.trackPeak"

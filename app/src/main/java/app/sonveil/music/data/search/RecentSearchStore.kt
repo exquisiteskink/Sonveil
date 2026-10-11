@@ -27,6 +27,7 @@ class RecentSearchStore(context: Context) {
     }
 
     companion object {
+        // Keep the legacy preference file so upgrades retain recent searches.
         private const val PREFS = "auralis_search"
         private const val KEY = "recent_queries"
         private const val SEP = "\u0001"

@@ -8,7 +8,7 @@ import org.junit.Test
 class ArtColorSchemeTest {
     private val m = ArtColorMath
 
-    // Representative surfaces from AuralisPalette (static defaults + art-derived blurs).
+    // Representative surfaces from SonveilPalette (static defaults + art-derived blurs).
     private val darkBackdrops = listOf(
         0xFF000000.toInt(), 0xFF101B2A.toInt(), 0xFF1C3044.toInt(),
         0xFF173650.toInt(), 0xFF553314.toInt(), 0xFF102036.toInt(), 0xFF5A4A30.toInt(),

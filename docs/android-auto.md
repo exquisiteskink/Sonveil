@@ -10,9 +10,9 @@ Sonveil is a **media-category** Android Auto app: Media3 `MediaLibraryService` +
 | App list icon | `@mipmap/ic_launcher` |
 | Package identity | `applicationId` / namespace `app.sonveil.music` |
 | Browse tabs | Playlists, Recently played, Favorites, Library |
-| Attribution icon | Monochrome `@drawable/ic_stat_auralis` on media cards |
+| Attribution icon | Monochrome `@drawable/ic_stat_sonveil` on media cards |
 
-Internal class names (`AuralisApp`, `Theme.Auralis`) and prefs keys are **not** shown in the AA drawer.
+Internal class names (`SonveilApp`, `Theme.Sonveil`) and prefs keys are **not** shown in the AA drawer.
 
 ## Architecture (menu presence)
 

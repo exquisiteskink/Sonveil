@@ -3,7 +3,7 @@ package app.sonveil.music.data.player.auto
 import androidx.media3.common.MediaMetadata
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import app.sonveil.music.AuralisApp
+import app.sonveil.music.SonveilApp
 import app.sonveil.music.data.auth.StoredCredentials
 import app.sonveil.music.data.remote.ArtistID3
 import kotlinx.coroutines.runBlocking
@@ -14,7 +14,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AutoArtistBrowseTest {
     @Test fun artistsAndRecentlyAddedAreReachableWithFourBrowsableTabs() = runBlocking {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as AuralisApp
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as SonveilApp
         val client = app.container.client
         val previous = client.credentials
         try {
@@ -35,7 +35,7 @@ class AutoArtistBrowseTest {
     }
 
     @Test fun artistIsBrowsableAndUsesServerArtistIdentity() {
-        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as AuralisApp
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as SonveilApp
         val factory = AutoMediaItemFactory(app.container.client, app.packageName) { 0 }
         val item = factory.artist(ArtistID3("opaque/artist-id", "Björk", albumCount = 12))
         assertEquals("opaque/artist-id", AutoBrowseIds.parseArtistId(item.mediaId))

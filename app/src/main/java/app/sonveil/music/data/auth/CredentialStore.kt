@@ -87,6 +87,7 @@ class CredentialStore(context: Context) {
 
     companion object {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+        // Keep legacy storage IDs so upgrades retain the encryption key and saved credentials.
         private const val KEY_ALIAS = "auralis_master_key"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val PREFS = "auralis_secure"

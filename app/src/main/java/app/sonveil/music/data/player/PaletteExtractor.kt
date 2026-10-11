@@ -10,7 +10,7 @@ import kotlin.math.min
 /** Signature Plexamp waveform / progress gold. */
 val WaveformGold = Color(0xFFE8A317)
 
-data class AuralisPalette(
+data class SonveilPalette(
     val isDark: Boolean,
     val background: Color,
     val surface: Color,
@@ -42,16 +42,16 @@ data class AuralisPalette(
         private val DARK_DEFAULT by lazy { buildDarkDefault() }
         private val LIGHT_DEFAULT by lazy { buildLightDefault() }
 
-        fun darkDefault(): AuralisPalette = DARK_DEFAULT
+        fun darkDefault(): SonveilPalette = DARK_DEFAULT
 
-        fun lightDefault(): AuralisPalette = LIGHT_DEFAULT
+        fun lightDefault(): SonveilPalette = LIGHT_DEFAULT
 
         /**
          * Single place that turns a set of art-derived surfaces plus a seed into a palette:
          * accent roles come from the tonal [ArtScheme], contrast-checked against the
          * surfaces they are drawn on.
          */
-        internal fun withScheme(base: AuralisPalette, seed: Int, fromArt: Boolean): AuralisPalette {
+        internal fun withScheme(base: SonveilPalette, seed: Int, fromArt: Boolean): SonveilPalette {
             val backdrops = listOf(base.background, base.surface, base.surfaceHigh, base.blurA, base.blurB, base.blurC)
                 .map { it.toArgb() }
             val textBackdrops = listOf(base.surface, base.surfaceHigh).map { it.toArgb() }
@@ -68,7 +68,7 @@ data class AuralisPalette(
             ArtScheme.from(WaveformGold.toArgb(), dark = true, backdrops = emptyList())
         }
 
-        private fun buildDarkDefault() = withScheme(AuralisPalette(
+        private fun buildDarkDefault() = withScheme(SonveilPalette(
             isDark = true,
             background = Color(0xFF070B13),
             surface = Color(0xFF101B2A),
@@ -90,7 +90,7 @@ data class AuralisPalette(
             scheme = PlaceholderScheme,
         ), WaveformGold.toArgb(), fromArt = false)
 
-        private fun buildLightDefault() = withScheme(AuralisPalette(
+        private fun buildLightDefault() = withScheme(SonveilPalette(
             isDark = false,
             background = Color(0xFFE2E2E2),
             surface = Color(0xFFEAEAEA),
@@ -115,7 +115,7 @@ data class AuralisPalette(
 }
 
 object PaletteExtractor {
-    fun from(bitmap: Bitmap, preferDark: Boolean): AuralisPalette {
+    fun from(bitmap: Bitmap, preferDark: Boolean): SonveilPalette {
         val palette = Palette.from(bitmap).clearFilters().generate()
         val vibrant = palette.vibrantSwatch
         val darkVibrant = palette.darkVibrantSwatch
@@ -135,7 +135,7 @@ object PaletteExtractor {
             val b = (muted ?: darkMuted ?: dominant)?.rgb.toColor(Color(0xFF2A2420)).asBlur(0.16f, 0.32f, 0.45f)
             val c = (darkMuted ?: dominant ?: muted)?.rgb.toColor(Color(0xFF1A1614)).asBlur(0.10f, 0.24f, 0.40f)
             val mini = a.asBlur(0.18f, 0.30f, 0.40f)
-            AuralisPalette(
+            SonveilPalette(
                 isDark = true,
                 background = Color(0xFF000000),
                 surface = mini,
@@ -154,7 +154,7 @@ object PaletteExtractor {
                 blurA = a,
                 blurB = b,
                 blurC = c,
-                scheme = AuralisPalette.darkDefault().scheme,
+                scheme = SonveilPalette.darkDefault().scheme,
             )
         } else {
             val a = (vibrant ?: lightVibrant ?: dominant)?.rgb.toColor(Color(0xFFC8C0B8)).asLightBlur(0.62f, 0.78f, 0.52f)
@@ -162,7 +162,7 @@ object PaletteExtractor {
             val c = (lightMuted ?: muted ?: dominant)?.rgb.toColor(Color(0xFFD0D0D0)).asLightBlur(0.74f, 0.86f, 0.32f)
             val page = b.asLightBlur(0.78f, 0.86f, 0.22f)
             val mini = a.asLightBlur(0.70f, 0.80f, 0.36f)
-            AuralisPalette(
+            SonveilPalette(
                 isDark = false,
                 background = page,
                 surface = mini,
@@ -181,10 +181,10 @@ object PaletteExtractor {
                 blurA = a,
                 blurB = b,
                 blurC = c,
-                scheme = AuralisPalette.darkDefault().scheme,
+                scheme = SonveilPalette.darkDefault().scheme,
             )
         }
-        return AuralisPalette.withScheme(base, seed, fromArt = true)
+        return SonveilPalette.withScheme(base, seed, fromArt = true)
     }
 
     private fun Int?.toColor(fallback: Color): Color = if (this == null) fallback else Color(this)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Auralis" parent="Theme.Auralis.Base">
+    <style name="Theme.Sonveil" parent="Theme.Sonveil.Base">
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

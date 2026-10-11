@@ -48,7 +48,7 @@ data class PlayerUiState(
     val isPlaying: Boolean = false,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
-    val palette: AuralisPalette = AuralisPalette.darkDefault(),
+    val palette: SonveilPalette = SonveilPalette.darkDefault(),
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val shuffle: Boolean = false,
     val favoriteById: Map<String, Boolean> = emptyMap(),
@@ -236,7 +236,7 @@ class PlayerController(
         }
         controller = null
         _state.value = PlayerUiState(
-            palette = if (preferDark) AuralisPalette.darkDefault() else AuralisPalette.lightDefault(),
+            palette = if (preferDark) SonveilPalette.darkDefault() else SonveilPalette.lightDefault(),
         )
     }
 
@@ -497,7 +497,7 @@ class PlayerController(
 
     fun resetPalette() {
         _state.update {
-            it.copy(palette = if (preferDark) AuralisPalette.darkDefault() else AuralisPalette.lightDefault())
+            it.copy(palette = if (preferDark) SonveilPalette.darkDefault() else SonveilPalette.lightDefault())
         }
     }
 
@@ -705,7 +705,7 @@ class PlayerController(
         }
     }
 
-    private suspend fun loadArtwork(albumId: String?): AuralisPalette? {
+    private suspend fun loadArtwork(albumId: String?): SonveilPalette? {
         val uri = CoverArtContentProvider.authorizedAlbumContentUri(
             albumId, 800, client.credentials, client.artworkNamespace,
         ) ?: return null

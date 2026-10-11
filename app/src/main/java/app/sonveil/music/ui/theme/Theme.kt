@@ -31,18 +31,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.sonveil.music.AppContainer
-import app.sonveil.music.data.player.AuralisPalette
+import app.sonveil.music.data.player.SonveilPalette
 import app.sonveil.music.data.player.PlayerController
 import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.SubsonicClient
 
-val LocalPalette = staticCompositionLocalOf { AuralisPalette.darkDefault() }
+val LocalPalette = staticCompositionLocalOf { SonveilPalette.darkDefault() }
 val LocalClient = staticCompositionLocalOf<SubsonicClient> { error("SubsonicClient not provided") }
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController not provided") }
 val LocalPlayerState = staticCompositionLocalOf<State<PlayerUiState>> { error("Player state not provided") }
 val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContainer not provided") }
 
-private val AuralisTypography = Typography(
+private val SonveilTypography = Typography(
     displayLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, letterSpacing = (-0.4).sp),
     headlineLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.2).sp),
     headlineMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
@@ -56,8 +56,8 @@ private val AuralisTypography = Typography(
 enum class ThemeMode { System, Dark, Light }
 
 @Composable
-fun AuralisTheme(
-    palette: AuralisPalette,
+fun SonveilTheme(
+    palette: SonveilPalette,
     themeMode: ThemeMode,
     content: @Composable () -> Unit,
 ) {
@@ -73,7 +73,7 @@ fun AuralisTheme(
     // fields) follow the art too instead of falling back to Material's baseline purple.
     val scheme = remember(palette, dark) { palette.toColorScheme(dark) }
     CompositionLocalProvider(LocalPalette provides palette) {
-        MaterialTheme(colorScheme = scheme, typography = AuralisTypography) {
+        MaterialTheme(colorScheme = scheme, typography = SonveilTypography) {
             Box(Modifier.fillMaxSize()) {
                 UltraBlurBackground(Modifier.fillMaxSize())
                 content()
@@ -83,11 +83,11 @@ fun AuralisTheme(
 }
 
 /**
- * Maps the art-derived [AuralisPalette] (+ its tonal [app.sonveil.music.data.player.ArtScheme])
+ * Maps the art-derived [SonveilPalette] (+ its tonal [app.sonveil.music.data.player.ArtScheme])
  * to a complete Material 3 [ColorScheme]. Page/surface colors keep the art blur surfaces the
  * app already draws; accent and container roles come from the contrast-checked tonal scheme.
  */
-fun AuralisPalette.toColorScheme(dark: Boolean = isDark): ColorScheme {
+fun SonveilPalette.toColorScheme(dark: Boolean = isDark): ColorScheme {
     val s = scheme
     val base = if (dark) darkColorScheme() else lightColorScheme()
     return base.copy(
@@ -128,7 +128,7 @@ fun AuralisPalette.toColorScheme(dark: Boolean = isDark): ColorScheme {
 /** Seek bar / progress colors, shared by the Now Playing seek bar and the mini player. */
 data class SeekColors(val active: Color, val inactive: Color, val thumb: Color)
 
-val AuralisPalette.seekColors: SeekColors
+val SonveilPalette.seekColors: SeekColors
     get() = SeekColors(
         active = Color(scheme.seekActive),
         inactive = Color(scheme.seekInactive),
@@ -222,7 +222,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUltraBlur(
 @Composable
 fun UltraBlurBackground(modifier: Modifier = Modifier) {
     val p = LocalPalette.current
-    val spec = AuralisMotion.emphasized<Color>(AuralisMotion.DurationPaletteMs)
+    val spec = SonveilMotion.emphasized<Color>(SonveilMotion.DurationPaletteMs)
     val bg = animateColorAsState(p.background, spec, label = "background")
     val a = animateColorAsState(p.blurA, spec, label = "blurA")
     val b = animateColorAsState(p.blurB, spec, label = "blurB")
@@ -232,7 +232,7 @@ fun UltraBlurBackground(modifier: Modifier = Modifier) {
 
 /** Translucent, edge-lit surface shared by player chrome and settings cards. */
 fun Modifier.sonveilGlass(
-    palette: AuralisPalette,
+    palette: SonveilPalette,
     radius: Dp,
     opaque: Boolean = false,
 ): Modifier {

@@ -34,7 +34,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
-import app.sonveil.music.AuralisApp
+import app.sonveil.music.SonveilApp
 import app.sonveil.music.MainActivity
 import app.sonveil.music.R
 import app.sonveil.music.data.player.auto.AutoLibraryCallback
@@ -139,7 +139,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         // 1) Allocate sticky session at service start — NOT deferred to first prepare.
         stickySessionId = generateStickySessionId()
 
-        val client = (application as AuralisApp).container.client
+        val client = (application as SonveilApp).container.client
         playbackCache = PlaybackCache(this, client, OkHttpDataSource.Factory(client.http)
             .setUserAgent("Sonveil/${app.sonveil.music.BuildConfig.VERSION_NAME}"))
 
@@ -167,7 +167,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
             putString("com.android.music.musicsource", "Sonveil")
             putString("app_name", "Sonveil")
         }
-        val app = application as AuralisApp
+        val app = application as SonveilApp
         val callback = AutoLibraryCallback(app.container, app.container.player, packageName) { pkg -> AutoClientGate.lookup(this, pkg) }
         libraryCallback = callback
         val guarded = guardedPlayer(exo)
@@ -182,7 +182,7 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
         if (!sessionBindPending) {
             applyReplayGain(exo, exo.currentMediaItem, eqMain)
         }
-        setMediaNotificationProvider(AuralisNotificationProvider(this))
+        setMediaNotificationProvider(SonveilNotificationProvider(this))
         handler.post(tick)
         armSleepTimerFromSettings()
     }
@@ -1378,15 +1378,16 @@ class PlaybackService : MediaLibraryService(), SharedPreferences.OnSharedPrefere
 }
 
 @UnstableApi
-private class AuralisNotificationProvider(
+private class SonveilNotificationProvider(
     private val appContext: Context,
 ) : MediaNotification.Provider {
 
     private val inner = DefaultMediaNotificationProvider.Builder(appContext)
+        // Keep the stored channel ID so upgrades retain users' notification settings.
         .setChannelId("auralis_playback")
         .setChannelName(R.string.playback_channel)
         .build()
-        .also { it.setSmallIcon(R.drawable.ic_stat_auralis) }
+        .also { it.setSmallIcon(R.drawable.ic_stat_sonveil) }
 
     override fun createNotification(
         mediaSession: MediaSession,
@@ -1403,7 +1404,7 @@ private class AuralisNotificationProvider(
         val rebuilt = Notification.Builder.recoverBuilder(appContext, created.notification)
             .setSubText(appContext.getString(R.string.app_name))
             .setContentInfo(appContext.getString(R.string.app_name))
-            .setSmallIcon(R.drawable.ic_stat_auralis)
+            .setSmallIcon(R.drawable.ic_stat_sonveil)
             .setColorized(true)
             .build()
         return MediaNotification(created.notificationId, rebuilt)

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Auralis.Base" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Sonveil.Base" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">#000000</item>
     </style>
-    <style name="Theme.Auralis" parent="Theme.Auralis.Base" />
+    <style name="Theme.Sonveil" parent="Theme.Sonveil.Base" />
 </resources>

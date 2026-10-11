@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import app.sonveil.music.ui.theme.AuralisMotion
+import app.sonveil.music.ui.theme.SonveilMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.seekColors
 import app.sonveil.music.ui.theme.UltraBlurBackground
@@ -46,7 +46,7 @@ fun FlatSeekBar(
     val shown = if (preview >= 0f) preview else (positionMs.toFloat() / dur).coerceIn(0f, 1f)
     // Same art-derived, contrast-checked tokens as the mini player progress; no fixed colors.
     val seek = p.seekColors
-    val spec = AuralisMotion.emphasized<Color>(AuralisMotion.DurationPaletteMs)
+    val spec = SonveilMotion.emphasized<Color>(SonveilMotion.DurationPaletteMs)
     val played = animateColorAsState(seek.active, spec, label = "seek-active")
     val thumb = animateColorAsState(seek.thumb, spec, label = "seek-thumb")
     val rest = animateColorAsState(seek.inactive, spec, label = "seek-inactive")

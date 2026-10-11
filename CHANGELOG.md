@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Complete active Sonveil branding for the application class, theme, palette, motion, and notification icon; update callers, tests, and Android manifests.
+- Preserve legacy preference files, Android Keystore aliases, notification channel IDs, media metadata keys, and Android Auto IDs so upgrades retain settings, credentials, and connected-session compatibility.
+- Keep the existing signing certificate: its historical subject and keystore alias do not affect the Sonveil application name, and changing the key would break installed-app upgrades.
+
 ## 1.3.13 — 2026-10-09
 
 ### Changed

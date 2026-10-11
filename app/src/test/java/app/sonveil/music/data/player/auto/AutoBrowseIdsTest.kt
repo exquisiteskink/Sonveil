@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AutoBrowseIdsTest {
-    @Test fun legacyAuralisRootIdsNormalizeToSonveil() {
+    @Test fun legacySonveilRootIdsNormalizeToSonveil() {
         assertEquals(AutoBrowseIds.ROOT, AutoBrowseIds.normalizeParentId("auralis_root"))
         assertEquals(AutoBrowseIds.PLAYLISTS, AutoBrowseIds.normalizeParentId("auralis_playlists"))
         assertEquals(AutoBrowseIds.FAVORITES, AutoBrowseIds.normalizeParentId("auralis_favorites"))
