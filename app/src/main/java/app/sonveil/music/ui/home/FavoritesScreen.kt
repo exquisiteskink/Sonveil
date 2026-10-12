@@ -25,6 +25,7 @@ import app.sonveil.music.ui.components.SectionHeader
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
 import app.sonveil.music.ui.theme.LocalPlayer
 
 @Composable
@@ -40,7 +41,7 @@ fun FavoritesScreen(
     LaunchedEffect(Unit) {
         starred = suspendRunCatching { client.getStarred() }.getOrDefault(Starred2())
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalPlayerContentInset.current)) {
         item { ScreenTopBar("Favorites", onBack) }
         if (starred.album.isEmpty() && starred.song.isEmpty() && starred.artist.isEmpty()) {
             item {

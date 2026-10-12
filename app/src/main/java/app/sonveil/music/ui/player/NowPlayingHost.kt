@@ -6,49 +6,18 @@ import androidx.compose.animation.splineBasedDecay
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.gestures.anchoredDraggable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Lyrics
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
@@ -64,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -72,17 +40,11 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import app.sonveil.music.data.player.PlayerUiState
-import app.sonveil.music.data.remote.formatDurationMs
 import app.sonveil.music.ui.components.AlbumCoverArt
-import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.SonveilMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
@@ -90,15 +52,23 @@ import app.sonveil.music.ui.theme.LocalPlayerState
 import app.sonveil.music.ui.theme.UltraBlurBackground
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.focusGroup
+import app.sonveil.music.ui.theme.SonveilSize
 
 private enum class PlayerSheetValue { Collapsed, Player, Queue }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun NowPlayingHost(
     sheet: MutableFloatState,
     onArtist: (String) -> Unit,
     bottomNavVisible: Boolean,
+    onMiniHeightChanged: (Dp) -> Unit = {},
 ) {
     val player = LocalPlayer.current
     val playerState = LocalPlayerState.current
@@ -112,6 +82,9 @@ fun NowPlayingHost(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var queueComposed by remember { mutableStateOf(false) }
+    val miniFocus = remember { FocusRequester() }
+    val playerFocus = remember { FocusRequester() }
+    val queueFocus = remember { FocusRequester() }
     val sheetState = remember(density) {
         AnchoredDraggableState(
             initialValue = PlayerSheetValue.Collapsed,
@@ -125,6 +98,22 @@ fun NowPlayingHost(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val heightPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+        val activeSurface by remember(sheetState, heightPx) { derivedStateOf {
+            val offset = sheetState.offset.takeIf { it.isFinite() } ?: heightPx
+            when {
+                offset < -heightPx * .5f -> PlayerSheetValue.Queue
+                offset < heightPx * .5f -> PlayerSheetValue.Player
+                else -> PlayerSheetValue.Collapsed
+            }
+        } }
+        LaunchedEffect(activeSurface) {
+            withFrameNanos { }
+            when (activeSurface) {
+                PlayerSheetValue.Collapsed -> miniFocus.requestFocus()
+                PlayerSheetValue.Player -> playerFocus.requestFocus()
+                PlayerSheetValue.Queue -> queueFocus.requestFocus()
+            }
+        }
         val anchors = remember(heightPx) {
             DraggableAnchors {
                 PlayerSheetValue.Collapsed at heightPx
@@ -203,7 +192,8 @@ fun NowPlayingHost(
             position = position,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = 12.dp, end = 12.dp, bottom = if (bottomNavVisible) 64.dp else 12.dp)
+                .padding(start = 12.dp, end = 12.dp,
+                    bottom = if (bottomNavVisible) SonveilSize.Navigation + SonveilSize.MiniGap else SonveilSize.MiniGap)
                 .navigationBarsPadding()
                 .graphicsLayer {
                     // Fade/slide mini away as NP rises — avoids hard cut under the sheet.
@@ -211,8 +201,13 @@ fun NowPlayingHost(
                     alpha = (1f - progress * 1.25f).coerceIn(0f, 1f)
                     translationY = 10.dp.toPx() * progress
                 }
-                .anchoredDraggable(sheetState, Orientation.Vertical)
-                .clickable { scope.launch { sheetState.animateTo(PlayerSheetValue.Player) } },
+                .then(if (activeSurface != PlayerSheetValue.Collapsed) Modifier.clearAndSetSemantics { } else Modifier)
+                .focusProperties { enter = { if (activeSurface != PlayerSheetValue.Collapsed) FocusRequester.Cancel else FocusRequester.Default } }
+                .focusGroup()
+                .focusRequester(miniFocus)
+                .anchoredDraggable(sheetState, Orientation.Vertical, enabled = activeSurface == PlayerSheetValue.Collapsed)
+                .clickable(enabled = activeSurface == PlayerSheetValue.Collapsed) { scope.launch { sheetState.animateTo(PlayerSheetValue.Player) } },
+            onHeightChanged = { pixels -> onMiniHeightChanged(with(density) { pixels.toDp() }) },
             onPlayPause = { player.playPause() },
             onRetry = { player.retryPlayback() },
         )
@@ -227,6 +222,10 @@ fun NowPlayingHost(
                 .anchoredDraggable(sheetState, Orientation.Vertical, enabled = sheetState.settledValue != PlayerSheetValue.Queue),
         ) {
             UltraBlurBackground(Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize()
+                .then(if (activeSurface != PlayerSheetValue.Player) Modifier.clearAndSetSemantics { } else Modifier)
+                .focusProperties { enter = { if (activeSurface != PlayerSheetValue.Player) FocusRequester.Cancel else FocusRequester.Default } }
+                .focusGroup()) {
             PositionAwareNowPlayingPage(
                 ui = ui,
                 position = position,
@@ -235,6 +234,7 @@ fun NowPlayingHost(
                     scope.launch { sheetState.animateTo(PlayerSheetValue.Collapsed) }
                 },
                 onClose = { scope.launch { sheetState.animateTo(PlayerSheetValue.Collapsed) } },
+                closeModifier = Modifier.focusRequester(playerFocus),
                 onOpenQueue = {
                     queueComposed = true
                     scope.launch {
@@ -243,6 +243,7 @@ fun NowPlayingHost(
                     }
                 },
             )
+            }
             if (queueComposed) {
                 Box(
                     Modifier
@@ -251,13 +252,17 @@ fun NowPlayingHost(
                             val offset = sheetState.offset.takeIf { it.isFinite() } ?: 0f
                             translationY = heightPx + offset.coerceAtMost(0f)
                         }
-                        .nestedScroll(queueDismiss),
+                        .nestedScroll(queueDismiss)
+                        .then(if (activeSurface != PlayerSheetValue.Queue) Modifier.clearAndSetSemantics { } else Modifier)
+                        .focusProperties { enter = { if (activeSurface != PlayerSheetValue.Queue) FocusRequester.Cancel else FocusRequester.Default } }
+                        .focusGroup(),
                 ) {
                     UltraBlurBackground(Modifier.fillMaxSize())
                     QueuePage(
                         ui = ui,
                         onClose = { scope.launch { sheetState.animateTo(PlayerSheetValue.Player) } },
                         headerModifier = Modifier.anchoredDraggable(sheetState, Orientation.Vertical),
+                        closeModifier = Modifier.focusRequester(queueFocus),
                     )
                 }
             }
@@ -272,6 +277,8 @@ private fun PositionAwareNowPlayingPage(
     onArtist: (String) -> Unit,
     onClose: () -> Unit,
     onOpenQueue: () -> Unit,
+    modifier: Modifier = Modifier,
+    closeModifier: Modifier = Modifier,
 ) {
     NowPlayingPage(
         ui = ui,
@@ -279,6 +286,8 @@ private fun PositionAwareNowPlayingPage(
         onArtist = onArtist,
         onClose = onClose,
         onOpenQueue = onOpenQueue,
+        modifier = modifier,
+        closeModifier = closeModifier,
     )
 }
 
@@ -289,171 +298,30 @@ private fun NowPlayingPage(
     onArtist: (String) -> Unit,
     onClose: () -> Unit,
     onOpenQueue: () -> Unit,
+    modifier: Modifier = Modifier,
+    closeModifier: Modifier = Modifier,
 ) {
     val player = LocalPlayer.current
     val p = LocalPalette.current
     val song = ui.current ?: return
     var showLyrics by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 24.dp),
-    ) {
-        // Plexamp-like: large art → seek → details/meta → controls (tight).
-        val artSize = minOf(maxWidth * 0.90f, maxHeight * 0.42f)
-        Column(
-            Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            IconButton(onClick = onClose) {
-                Icon(
-                    Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Close",
-                    tint = p.onBackground.copy(alpha = 0.55f),
-                    modifier = Modifier.size(32.dp),
-                )
+    NowPlayingContent(
+        ui = ui, positionMs = positionMs, lyricsOpen = showLyrics,
+        onArtist = onArtist, onClose = onClose, onOpenQueue = onOpenQueue,
+        onSeek = player::seek, onRetry = player::retryPlayback,
+        onToggleFavorite = { player.toggleFavorite(song) }, onToggleLyrics = { showLyrics = !showLyrics },
+        artwork = { modifier ->
+            Crossfade(targetState = showLyrics,
+                animationSpec = SonveilMotion.emphasized(SonveilMotion.DurationArtMs), label = "np-lyrics",
+                modifier = modifier) { lyricsMode ->
+                if (lyricsMode) LyricsPane(ui.lyrics, positionMs, Modifier.fillMaxSize(), { showLyrics = false })
+                else AlbumCoverArt(song.albumId, Modifier.fillMaxSize().shadow(12.dp, RoundedCornerShape(14.dp))
+                    .clickable { showLyrics = true }, song.title, corner = 14.dp)
             }
-            Spacer(Modifier.height(4.dp))
-            Crossfade(
-                targetState = showLyrics,
-                animationSpec = SonveilMotion.emphasized(SonveilMotion.DurationArtMs),
-                label = "np-lyrics",
-                modifier = Modifier.size(artSize),
-            ) { lyricsMode ->
-                if (lyricsMode) {
-                    LyricsPane(
-                        lyrics = ui.lyrics,
-                        positionMs = positionMs,
-                        modifier = Modifier.fillMaxSize(),
-                        onClose = { showLyrics = false },
-                    )
-                } else {
-                    AlbumCoverArt(
-                        albumId = song.albumId,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .shadow(22.dp, RoundedCornerShape(14.dp))
-                            .clickable { showLyrics = true },
-                        contentDescription = song.title,
-                        corner = 14.dp,
-                    )
-                }
-            }
-
-            // Breathing room under art, then seek — Plexamp-like stack.
-            Spacer(Modifier.height(20.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    formatDurationMs(positionMs),
-                    color = p.onBackground.copy(alpha = 0.85f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.width(40.dp),
-                )
-                FlatSeekBar(
-                    positionMs = positionMs,
-                    durationMs = ui.durationMs,
-                    onSeek = { ms -> player.seek(ms) },
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                )
-                Text(
-                    formatDurationMs(ui.durationMs),
-                    color = p.onBackground.copy(alpha = 0.85f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.width(40.dp),
-                    maxLines = 1,
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Text(
-                song.artist.orEmpty(),
-                color = p.onBackground.copy(alpha = 0.92f),
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(enabled = song.artistId != null) {
-                    song.artistId?.let(onArtist)
-                },
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                song.title,
-                color = p.onBackground,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-            song.album?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    it,
-                    color = p.onBackground.copy(alpha = 0.55f),
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            ui.playbackError?.let { err ->
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        err,
-                        color = p.primary,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    Text(
-                        "Retry",
-                        modifier = Modifier.clickable { player.retryPlayback() },
-                        color = p.primary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-            MetaRow(
-                codec = song.codecLabel,
-                bitDepth = song.bitDepth,
-                sampleRate = song.sampleRateLabel,
-                favorite = ui.isFavorite(song),
-                lyricsOpen = showLyrics,
-                onToggleFavorite = { player.toggleFavorite(song) },
-                onToggleLyrics = { showLyrics = !showLyrics },
-            )
-
-            // Tight gap: MetaRow → ControlsDeck (no weight gap).
-            Spacer(Modifier.height(10.dp))
-            ControlsDeck(ui)
-            Spacer(Modifier.height(6.dp))
-            Box(
-                Modifier.fillMaxWidth().height(48.dp).clickable(onClick = onOpenQueue),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "Up next · ${ui.upNext.size} songs",
-                    color = p.onBackground.copy(alpha = 0.7f),
-                    fontSize = 13.sp,
-                )
-            }
-            // Remaining flex only after controls so seek/details stay under art.
-            Spacer(Modifier.weight(1f))
-        }
-    }
+        },
+        controls = { ControlsDeck(ui) },
+        modifier = modifier,
+        closeModifier = closeModifier,
+    )
 }

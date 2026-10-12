@@ -26,6 +26,17 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.material3.ripple
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.theme.textTertiary
+import app.sonveil.music.ui.theme.focusRing
+import app.sonveil.music.ui.theme.SonveilSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -85,6 +96,8 @@ import androidx.compose.ui.platform.LocalContext
 private fun Modifier.pressScale(onClick: () -> Unit): Modifier = composed {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val p = LocalPalette.current
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.96f else 1f,
         animationSpec = SonveilMotion.standard(SonveilMotion.DurationPressMs),
@@ -92,7 +105,8 @@ private fun Modifier.pressScale(onClick: () -> Unit): Modifier = composed {
     )
     this
         .scale(scale)
-        .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+        .then(if (focused) Modifier.border(2.dp, p.focusRing, RoundedCornerShape(8.dp)) else Modifier)
+        .clickable(interactionSource = interaction, indication = ripple(), role = Role.Button, onClick = onClick)
 }
 
 @Composable
@@ -230,7 +244,9 @@ fun SectionHeader(
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null) Modifier.heightIn(min = SonveilSize.Action)
+                    .clickable(role = Role.Button, onClick = onClick) else Modifier)
+                .semantics { heading() }
                 .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -270,7 +286,7 @@ fun AlbumCard(
         CoverArt(album.coverArt, Modifier.fillMaxWidth().aspectRatio(1f), album.displayName, corner = 6.dp)
         Spacer(Modifier.height(8.dp))
         Text(album.displayName, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-        Text(album.artist.orEmpty(), color = p.onBackground.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+        Text(album.artist.orEmpty(), color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
     }
 }
 
@@ -357,7 +373,7 @@ fun SongRow(
         if (rank != null) {
             Text(
                 rank.toString(),
-                color = p.onBackground.copy(alpha = if (isPlaying) 0.9f else 0.45f),
+                color = if (isPlaying) p.onBackground else p.textTertiary,
                 fontWeight = FontWeight.Normal,
                 fontSize = 15.sp,
                 modifier = Modifier.width(28.dp),
@@ -379,7 +395,7 @@ fun SongRow(
             if (showArtist && !song.artist.isNullOrBlank()) {
                 Text(
                     song.artist,
-                    color = p.onBackground.copy(alpha = 0.5f),
+                    color = p.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -387,7 +403,7 @@ fun SongRow(
             }
             Text(
                 formatDuration(song.duration),
-                color = p.onBackground.copy(alpha = 0.45f),
+                color = p.textTertiary,
                 fontSize = 13.sp,
             )
         }
@@ -401,7 +417,7 @@ fun SongRow(
         }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = p.onBackground.copy(alpha = 0.45f))
+                Icon(Icons.Rounded.MoreVert, contentDescription = "More actions for ${song.title}", tint = p.textSecondary)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
@@ -468,7 +484,7 @@ fun MixOrb(
         CoverArt(coverId, Modifier.size(96.dp).clip(CircleShape), title, corner = 48.dp)
         Spacer(Modifier.height(8.dp))
         Text(title, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-        Text(subtitle, color = p.onBackground.copy(alpha = 0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp)
+        Text(subtitle, color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp)
     }
 }
 
@@ -491,8 +507,9 @@ private fun LibraryChip(label: String, onClick: () -> Unit, modifier: Modifier =
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         modifier = modifier
+            .heightIn(min = SonveilSize.Action)
             .sonveilGlass(p, 50.dp)
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
 }
@@ -520,7 +537,7 @@ fun ArtistListRow(artist: ArtistID3, onClick: () -> Unit, modifier: Modifier = M
         Column(Modifier.weight(1f)) {
             Text(artist.name, color = p.onBackground, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (artist.albumCount > 0) {
-                Text("${artist.albumCount} albums", color = p.onBackground.copy(alpha = 0.5f), fontSize = 12.sp)
+                Text("${artist.albumCount} albums", color = p.textSecondary, fontSize = 12.sp)
             }
         }
     }
@@ -542,12 +559,12 @@ fun AlbumListRow(album: AlbumID3, onClick: () -> Unit, modifier: Modifier = Modi
         Column(Modifier.weight(1f)) {
             Text(album.displayName, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp)
             if (album.year > 0) {
-                Text(album.year.toString(), color = p.onBackground.copy(alpha = 0.5f), fontSize = 13.sp)
+                Text(album.year.toString(), color = p.textSecondary, fontSize = 13.sp)
             }
         }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = p.onBackground.copy(alpha = 0.45f))
+                Icon(Icons.Rounded.MoreVert, contentDescription = "More actions for ${album.displayName}", tint = p.textSecondary)
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
@@ -562,7 +579,7 @@ fun AlbumListRow(album: AlbumID3, onClick: () -> Unit, modifier: Modifier = Modi
 @Composable
 fun ErrorText(message: String, modifier: Modifier = Modifier) {
     val p = LocalPalette.current
-    Text(message, color = p.onBackground.copy(alpha = 0.7f), modifier = modifier.padding(24.dp))
+    Text(message, color = p.textSecondary, modifier = modifier.padding(24.dp))
 }
 
 @Composable

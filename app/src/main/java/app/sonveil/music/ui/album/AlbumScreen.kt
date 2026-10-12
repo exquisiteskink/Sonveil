@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,6 +49,10 @@ import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.components.DetailLoadingScreen
+import app.sonveil.music.ui.components.libraryError
 
 internal data class DiscSection(
     val number: Int,
@@ -80,19 +85,21 @@ fun AlbumScreen(
     var album by remember(albumId) { mutableStateOf<AlbumWithSongs?>(null) }
     var error by remember(albumId) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(albumId) {
+    var retryEpoch by remember(albumId) { mutableIntStateOf(0) }
+    LaunchedEffect(albumId, retryEpoch) {
+        error = null
         try {
             album = client.getAlbum(albumId)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message
+            error = libraryError(e)
         }
     }
 
     val current = album
     if (current == null) {
-        if (error != null) ErrorText(error ?: "")
+        DetailLoadingScreen("Album", onBack, error, { retryEpoch++ })
         return
     }
 
@@ -113,7 +120,7 @@ fun AlbumScreen(
     LazyColumn(
         Modifier
             .fillMaxSize()
-            .padding(bottom = 64.dp),
+            .padding(bottom = LocalPlayerContentInset.current),
     ) {
         item {
             ScreenTopBar(current.displayName, onBack)
@@ -138,7 +145,7 @@ fun AlbumScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     IconButton(onClick = { if (songs.isNotEmpty()) player.play(songs.shuffled(), 0) }) {
-                        Icon(Icons.Rounded.Shuffle, "Shuffle", tint = p.onBackground.copy(alpha = 0.75f))
+                        Icon(Icons.Rounded.Shuffle, "Shuffle", tint = p.textSecondary)
                     }
                     IconButton(
                         onClick = {
@@ -149,8 +156,7 @@ fun AlbumScreen(
                     ) {
                         val tint = when (dlState.phase) {
                             DownloadPhase.Running -> p.primary
-                            DownloadPhase.PausedWifi, DownloadPhase.Failed -> p.onBackground.copy(alpha = 0.45f)
-                            else -> p.onBackground.copy(alpha = 0.75f)
+                            else -> p.textSecondary
                         }
                         Icon(Icons.Rounded.Download, "Download album", tint = tint)
                     }
@@ -158,7 +164,7 @@ fun AlbumScreen(
             }
             Text(
                 stats,
-                color = p.onBackground.copy(alpha = 0.55f),
+                color = p.textSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.End,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
@@ -175,7 +181,7 @@ fun AlbumScreen(
                 if (status.isNotBlank()) {
                     Text(
                         status,
-                        color = p.onBackground.copy(alpha = 0.55f),
+                        color = p.textSecondary,
                         fontSize = 12.sp,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     )
@@ -196,7 +202,7 @@ fun AlbumScreen(
                 item(key = "disc-${section.number}") {
                     Text(
                         "Disc ${section.number}",
-                        color = p.onBackground.copy(alpha = 0.7f),
+                        color = p.textSecondary,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 6.dp),
                     )
@@ -218,7 +224,7 @@ fun AlbumScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     artistName,
-                    color = p.onBackground.copy(alpha = 0.7f),
+                    color = p.textSecondary,
                     modifier = Modifier
                         .padding(horizontal = 20.dp, vertical = 8.dp)
                         .clickable(enabled = current.artistId != null) {

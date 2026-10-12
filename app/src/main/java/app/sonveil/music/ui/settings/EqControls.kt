@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import app.sonveil.music.data.player.EqFilter
 import app.sonveil.music.data.player.EqPresets
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.textSecondary
 import app.sonveil.music.ui.theme.seekColors
 import app.sonveil.music.ui.theme.sonveilSliderColors
 import kotlin.math.log10
@@ -137,7 +138,7 @@ private fun LogHzSlider(hz: Float, onHz: (Float) -> Unit) {
     Column {
         Text(
             "Frequency  ${formatHz(hz)}",
-            color = p.onBackground.copy(alpha = 0.75f),
+            color = p.textSecondary,
             fontSize = 12.sp,
         )
         Slider(
@@ -161,7 +162,7 @@ private fun DbSlider(
     Column {
         Text(
             "$title  ${format(value)}",
-            color = p.onBackground.copy(alpha = 0.75f),
+            color = p.textSecondary,
             fontSize = 12.sp,
         )
         Slider(
@@ -186,7 +187,7 @@ private fun VerticalDbFader(
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             signedDb(shown),
-            color = p.onBackground.copy(alpha = 0.7f),
+            color = p.textSecondary,
             fontSize = 9.sp,
             maxLines = 1,
             overflow = TextOverflow.Clip,

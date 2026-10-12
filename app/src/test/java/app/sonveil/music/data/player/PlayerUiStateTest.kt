@@ -6,6 +6,16 @@ import org.junit.Test
 import kotlin.random.Random
 
 class PlayerUiStateTest {
+    @Test fun bufferingPreservesPauseAgencyAndIsNotAnError() {
+        val state = PlayerUiState(playbackState = androidx.media3.common.Player.STATE_BUFFERING, playWhenReady = true)
+        assertTrue(state.isBuffering)
+        assertTrue(state.showPause)
+        assertNull(state.playbackError)
+        assertFalse(state.copy(playWhenReady = false).showPause)
+        assertFalse(state.copy(playWhenReady = false).isBuffering)
+        assertFalse(state.copy(playbackError = "Connection error").showPause)
+    }
+
     @Test fun shuffleMovesCurrentToTopAndKeepsEveryQueueEntry() {
         val songs = listOf(Song("a"), Song("b"), Song("a"), Song("c"))
         val shuffled = shuffledQueueFromCurrent(songs, 2, Random(17))

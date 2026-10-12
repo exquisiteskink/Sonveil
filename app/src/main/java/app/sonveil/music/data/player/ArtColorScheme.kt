@@ -210,6 +210,10 @@ data class ArtScheme(
     val seekActive: Int,
     /** Unplayed part of the seek bar (translucent, hue-tinted). */
     val seekInactive: Int,
+    /** Opaque metadata colors, contrast-bounded against the page and glass surface family. */
+    val textSecondary: Int,
+    val textTertiary: Int,
+    val focusRing: Int,
 ) {
     companion object {
         /** Non-text UI (seek track, thumb, switch track) — WCAG 1.4.11. */
@@ -271,6 +275,17 @@ data class ArtScheme(
             val secondary = sec(secondaryTone)
             val tertiary = ter(tertiaryTone)
 
+            // A theme-wide envelope also covers another album's still-animating wash.
+            // Keep metadata neutral: artwork hue belongs in accents, not readability.
+            val textSurfaces = (backdrops + textBackdrops +
+                if (dark) listOf(0xFF727272.toInt()) else listOf(0xFF909090.toInt())).distinct()
+            fun neutral(tone: Double) = m.fromLch(tone, 0.0, 0.0)
+            fun readableNeutral(start: Double) = neutral(m.solveTone(start, lighter = dark) { tone ->
+                m.minContrast(neutral(tone), textSurfaces) >= MIN_TEXT_CONTRAST
+            })
+            val secondaryText = readableNeutral(if (dark) 78.0 else 30.0)
+            val tertiaryText = readableNeutral(if (dark) 70.0 else 38.0)
+
             return ArtScheme(
                 primary = primary,
                 onPrimary = onPrimary,
@@ -285,7 +300,7 @@ data class ArtScheme(
                 onTertiary = bestOn(tertiary, ter(if (dark) 10.0 else 100.0), ter(if (dark) 100.0 else 10.0)),
                 tertiaryContainer = ter(if (dark) 30.0 else 90.0),
                 onTertiaryContainer = ter(if (dark) 90.0 else 10.0),
-                onSurfaceVariant = nv(if (dark) 80.0 else 30.0),
+                onSurfaceVariant = secondaryText,
                 outline = nv(if (dark) 60.0 else 50.0),
                 outlineVariant = nv(if (dark) 30.0 else 80.0),
                 inverseSurface = n(if (dark) 90.0 else 20.0),
@@ -299,6 +314,9 @@ data class ArtScheme(
                 surfaceContainerHighest = n(if (dark) 22.0 else 90.0),
                 seekActive = primary,
                 seekInactive = m.withAlpha(m.fromLch(if (dark) 88.0 else 22.0, min(pc, 16.0), hue), if (dark) 0.32f else 0.26f),
+                textSecondary = secondaryText,
+                textTertiary = tertiaryText,
+                focusRing = primary,
             )
         }
 

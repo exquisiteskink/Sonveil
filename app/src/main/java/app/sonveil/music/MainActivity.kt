@@ -25,6 +25,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import app.sonveil.music.ui.theme.textSecondary
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material3.Icon
@@ -178,6 +182,7 @@ private val tabs = listOf(
     Tab("settings", "Settings", R.drawable.ic_nav_settings),
 )
 
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun SonveilRoot(
     loggedIn: Boolean,
@@ -195,6 +200,10 @@ private fun SonveilRoot(
         androidx.compose.runtime.derivedStateOf { playerState.value.current != null }
     }
     val sheet = remember { mutableFloatStateOf(0f) }
+    var miniHeight by remember { mutableStateOf(app.sonveil.music.ui.theme.SonveilSize.MiniPlayer) }
+    val playerOpen by remember { androidx.compose.runtime.derivedStateOf { sheet.floatValue > 0.01f } }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(playerOpen) { if (playerOpen) focusManager.clearFocus(force = true) }
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     val onTabs = route in tabs.map { it.route }
@@ -223,10 +232,13 @@ private fun SonveilRoot(
                                 translationY = size.height * progress
                                 alpha = 1f - progress
                             }
+                            .then(if (playerOpen) Modifier.clearAndSetSemantics { } else Modifier)
+                            .focusProperties { enter = { if (playerOpen) androidx.compose.ui.focus.FocusRequester.Cancel else androidx.compose.ui.focus.FocusRequester.Default } }
+                            .focusGroup()
                             .sonveilGlass(p, 20.dp),
                     ) {
                         NavigationBar(
-                            modifier = Modifier.height(56.dp),
+                            modifier = Modifier.height(app.sonveil.music.ui.theme.SonveilSize.Navigation),
                             containerColor = Color.Transparent,
                             contentColor = p.onBackground,
                             tonalElevation = 0.dp,
@@ -248,12 +260,12 @@ private fun SonveilRoot(
                                             painter = painterResource(tab.icon),
                                             contentDescription = tab.label,
                                             modifier = Modifier.size(24.dp),
-                                            tint = if (selected) p.primary else p.onBackground.copy(alpha = 0.38f),
+                                            tint = if (selected) p.primary else p.textSecondary,
                                         )
                                     },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = p.primary,
-                                        unselectedIconColor = p.onBackground.copy(alpha = 0.38f),
+                                        unselectedIconColor = p.textSecondary,
                                         indicatorColor = Color.Transparent,
                                     ),
                                 )
@@ -269,10 +281,15 @@ private fun SonveilRoot(
                 }
             },
         ) { contentPadding ->
+            CompositionLocalProvider(app.sonveil.music.ui.theme.LocalPlayerContentInset provides
+                if (hasCurrentSong) miniHeight + app.sonveil.music.ui.theme.SonveilSize.MiniGap else 0.dp) {
             NavHost(
                 navController = nav,
                 startDestination = if (loggedIn) "home" else "login",
-                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                modifier = Modifier.fillMaxSize().padding(contentPadding)
+                    .then(if (playerOpen) Modifier.clearAndSetSemantics { } else Modifier)
+                    .focusProperties { enter = { if (playerOpen) androidx.compose.ui.focus.FocusRequester.Cancel else androidx.compose.ui.focus.FocusRequester.Default } }
+                    .focusGroup(),
                 enterTransition = {
                     fadeIn(animationSpec = SonveilMotion.fade()) +
                         slideInHorizontally(
@@ -398,6 +415,7 @@ private fun SonveilRoot(
                     )
                 }
             }
+            }
         }
 
         if (loggedIn && hasCurrentSong) {
@@ -405,6 +423,7 @@ private fun SonveilRoot(
                 sheet = sheet,
                 onArtist = { nav.navigate("artist/${encode(it)}") },
                 bottomNavVisible = onTabs,
+                onMiniHeightChanged = { miniHeight = it },
             )
         }
     }

@@ -66,7 +66,12 @@ import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
-import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.sonveil.music.ui.components.LoadingStatus
+import app.sonveil.music.ui.components.ErrorState
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.focusRing
+import app.sonveil.music.ui.theme.textSecondary
 import kotlinx.coroutines.launch
 
 private data class SearchSuggestion(
@@ -89,14 +94,15 @@ fun SearchScreen(
     val container = LocalContainer.current
     val p = LocalPalette.current
     val scope = rememberCoroutineScope()
-    var query by remember { mutableStateOf("") }
+    val search = remember(client, scope) {
+        MusicSearch(scope, { request -> client.search3(request.query,
+            artistOffset = request.artistOffset, albumOffset = request.albumOffset, songOffset = request.songOffset) })
+    }
+    val searchUi by search.state.collectAsStateWithLifecycle()
+    val query = searchUi.query
+    val result = searchUi.result
+    val suggestions = result
     var searchFocused by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf(SearchResult3()) }
-    var moreArtists by remember { mutableStateOf<List<app.sonveil.music.data.remote.ArtistID3>>(emptyList()) }
-    var moreAlbums by remember { mutableStateOf<List<AlbumID3>>(emptyList()) }
-    var moreSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
-    var canLoadMore by remember { mutableStateOf(false) }
-    var suggestions by remember { mutableStateOf(SearchResult3()) }
     var recentQueries by remember { mutableStateOf(container.recentSearches.list()) }
     var allGenres by remember { mutableStateOf<List<Genre>>(emptyList()) }
     var recentAlbums by remember { mutableStateOf<List<AlbumID3>>(emptyList()) }
@@ -108,32 +114,9 @@ fun SearchScreen(
         recentAlbums = suspendRunCatching { client.getAlbumList2("recent", 24) }.getOrDefault(emptyList())
     }
 
-    // Full results — existing search3 (OpenSubsonic / Subsonic / Navidrome).
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
-            result = SearchResult3()
-            suggestions = SearchResult3()
-            moreArtists = emptyList()
-            moreAlbums = emptyList()
-            moreSongs = emptyList()
-            canLoadMore = false
-            return@LaunchedEffect
-        }
-        val q = query.trim()
-        // Navidrome ignores single-character search3 queries; still allow UI typing.
-        delay(180)
-        suggestions = suspendRunCatching {
-            client.search3(q, artistCount = 6, albumCount = 6, songCount = 8)
-        }.getOrDefault(SearchResult3())
-        delay(120)
-        val page = suspendRunCatching { client.search3(q) }.getOrDefault(SearchResult3())
-        result = page
-        moreArtists = emptyList()
-        moreAlbums = emptyList()
-        moreSongs = emptyList()
-        canLoadMore = page.artist.size >= 20 || page.album.size >= 20 || page.song.size >= 20
-        if (q.length >= 2 && (result.artist.isNotEmpty() || result.album.isNotEmpty() || result.song.isNotEmpty())) {
-            container.recentSearches.add(q)
+    LaunchedEffect(searchUi.hasSearched, result) {
+        if (searchUi.hasSearched && (result.artist.isNotEmpty() || result.album.isNotEmpty() || result.song.isNotEmpty())) {
+            container.recentSearches.add(query.trim())
             recentQueries = container.recentSearches.list()
         }
     }
@@ -158,7 +141,7 @@ fun SearchScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(bottom = 64.dp)) {
+    Column(Modifier.fillMaxSize().padding(bottom = LocalPlayerContentInset.current)) {
         Text(
             "Search",
             color = p.onBackground,
@@ -169,17 +152,17 @@ fun SearchScreen(
         )
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = search::setQuery,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .onFocusChanged { searchFocused = it.isFocused },
             placeholder = { Text("Artists, albums, songs, genres") },
-            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = p.onBackground.copy(alpha = 0.45f)) },
+            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = p.textSecondary) },
             singleLine = true,
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = p.onBackground.copy(alpha = 0.18f),
+                focusedBorderColor = p.focusRing,
                 unfocusedBorderColor = Color.Transparent,
                 focusedContainerColor = p.surfaceHigh,
                 unfocusedContainerColor = p.surfaceHigh,
@@ -232,12 +215,17 @@ fun SearchScreen(
                 item { SectionHeader("Recent searches") }
                 items(recentQueries, key = { "rq-$it" }) { recent ->
                     RecentQueryRow(recent) {
-                        query = recent
+                        search.setQuery(recent)
                         container.recentSearches.add(recent)
                         recentQueries = container.recentSearches.list()
                     }
                 }
             } else {
+                if (searchUi.loading) item { LoadingStatus("Searching your library") }
+                searchUi.error?.let { message -> item { ErrorState(message, search::retry) } }
+                if (query.isNotBlank() && query.trim().length < 2) {
+                    item { Text("Type at least two characters", color = p.textSecondary, modifier = Modifier.padding(20.dp)) }
+                }
                 if (suggestionRows.isNotEmpty()) {
                     item { SectionHeader("Suggestions") }
                     items(suggestionRows, key = { it.key }) { row ->
@@ -263,9 +251,9 @@ fun SearchScreen(
                         }
                     }
                 }
-                val artists = result.artist + moreArtists
-                val albums = result.album + moreAlbums
-                val songs = result.song + moreSongs
+                val artists = result.artist
+                val albums = result.album
+                val songs = result.song
                 if (artists.isNotEmpty()) {
                     item { SectionHeader("Artists") }
                     item {
@@ -297,33 +285,17 @@ fun SearchScreen(
                         )
                     }
                 }
-                if (canLoadMore && query.isNotBlank()) {
+                if (searchUi.paging) item { LoadingStatus("Loading more results") }
+                searchUi.pageError?.let { message -> item { ErrorState(message, search::loadMore) } }
+                if (searchUi.canLoadMore && searchUi.pageError == null) {
                     item {
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                val q = query.trim()
-                                scope.launch {
-                                    val page = suspendRunCatching {
-                                        client.search3(
-                                            q,
-                                            artistOffset = artists.size,
-                                            albumOffset = albums.size,
-                                            songOffset = songs.size,
-                                        )
-                                    }.getOrDefault(SearchResult3())
-                                    moreArtists = moreArtists + page.artist.filter { next -> artists.none { it.id == next.id } }
-                                    moreAlbums = moreAlbums + page.album.filter { next -> albums.none { it.id == next.id } }
-                                    moreSongs = moreSongs + page.song.filter { next -> songs.none { it.id == next.id } }
-                                    canLoadMore = page.artist.size >= 20 || page.album.size >= 20 || page.song.size >= 20
-                                }
-                            },
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                        ) {
+                        androidx.compose.material3.TextButton(onClick = search::loadMore,
+                            enabled = !searchUi.paging, modifier = Modifier.padding(horizontal = 12.dp)) {
                             Text("More results")
                         }
                     }
                 }
-                if (query.isNotBlank() &&
+                if (searchUi.hasSearched && searchUi.error == null &&
                     suggestionRows.isEmpty() &&
                     artists.isEmpty() &&
                     albums.isEmpty() &&
@@ -333,7 +305,7 @@ fun SearchScreen(
                     item {
                         Text(
                             "Nothing matched “$query”",
-                            color = p.onBackground.copy(alpha = 0.5f),
+                            color = p.textSecondary,
                             modifier = Modifier.padding(24.dp),
                         )
                     }
@@ -364,7 +336,7 @@ fun SearchScreen(
                 if (!actionsSong.artist.isNullOrBlank()) {
                     Text(
                         actionsSong.artist,
-                        color = p.onBackground.copy(alpha = 0.55f),
+                        color = p.textSecondary,
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -424,7 +396,7 @@ private fun SearchSongActionRow(
             .padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = p.onBackground.copy(alpha = 0.75f))
+        Icon(icon, contentDescription = null, tint = p.textSecondary)
         Spacer(Modifier.width(16.dp))
         Text(label, color = p.onBackground, fontSize = 16.sp)
     }
@@ -440,7 +412,7 @@ private fun RecentQueryRow(query: String, onClick: () -> Unit) {
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.History, null, tint = p.onBackground.copy(alpha = 0.45f), modifier = Modifier.size(22.dp))
+        Icon(Icons.Rounded.History, null, tint = p.textSecondary, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Text(query, color = p.onBackground, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -459,13 +431,13 @@ private fun SuggestionRow(row: SearchSuggestion) {
         if (row.coverArt != null) {
             CoverArt(row.coverArt, Modifier.size(40.dp), row.title, corner = 4.dp, fallback = row.icon)
         } else {
-            Icon(row.icon, null, tint = p.onBackground.copy(alpha = 0.45f), modifier = Modifier.size(40.dp).padding(8.dp))
+            Icon(row.icon, null, tint = p.textSecondary, modifier = Modifier.size(40.dp).padding(8.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(row.title, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 15.sp)
             if (!row.subtitle.isNullOrBlank()) {
-                Text(row.subtitle, color = p.onBackground.copy(alpha = 0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+                Text(row.subtitle, color = p.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
             }
         }
     }

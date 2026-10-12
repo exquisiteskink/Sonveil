@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -54,6 +55,14 @@ import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.components.DetailLoadingScreen
+import app.sonveil.music.ui.components.ErrorState
+import app.sonveil.music.ui.components.EmptyState
+import app.sonveil.music.ui.components.LoadingStatus
+import app.sonveil.music.ui.components.readKeeping
+import app.sonveil.music.ui.components.libraryError
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -79,7 +88,9 @@ fun ArtistScreen(
     var error by remember(artistId) { mutableStateOf<String?>(null) }
     var libraryArtists by remember(artistId) { mutableStateOf<List<ArtistID3>>(emptyList()) }
 
-    LaunchedEffect(artistId) {
+    var retryEpoch by remember(artistId) { mutableIntStateOf(0) }
+    LaunchedEffect(artistId, retryEpoch) {
+        error = null
         popular = emptyList()
         popularLoading = true
         try {
@@ -104,14 +115,14 @@ fun ArtistScreen(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message
+            error = libraryError(e)
             popularLoading = false
         }
     }
 
     val current = artist
     if (current == null) {
-        if (error != null) ErrorText(error ?: "")
+        DetailLoadingScreen("Artist", onBack, error, { retryEpoch++ })
         return
     }
 
@@ -129,7 +140,7 @@ fun ArtistScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 64.dp),
+            .padding(bottom = LocalPlayerContentInset.current),
     ) {
         ScreenTopBar(current.name, onBack)
         Row(
@@ -189,7 +200,7 @@ fun ArtistScreen(
             SectionHeader("Artist bio")
             Text(
                 bio!!,
-                color = p.onBackground.copy(alpha = 0.78f),
+                color = p.textSecondary,
                 fontSize = 14.sp,
                 lineHeight = 21.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
@@ -241,17 +252,26 @@ fun PopularSongsScreen(
     val player = LocalPlayer.current
     val p = LocalPalette.current
     var songs by remember(artistId) { mutableStateOf<List<Song>>(emptyList()) }
-
-    LaunchedEffect(artistId) {
-        val artist = suspendRunCatching { client.getArtist(artistId) }.getOrNull() ?: return@LaunchedEffect
-        songs = metadata.popularLibrarySongs(artistName = artist.name, artistId = artist.id, count = 20)
+    var loading by remember(artistId) { mutableStateOf(true) }
+    var error by remember(artistId) { mutableStateOf<String?>(null) }
+    var retry by remember(artistId) { mutableIntStateOf(0) }
+    LaunchedEffect(artistId, retry) {
+        loading = true
+        val result = readKeeping(songs) {
+            val artist = client.getArtist(artistId)
+            metadata.popularLibrarySongs(artistName = artist.name, artistId = artist.id, count = 20)
+        }
+        songs = result.value.orEmpty(); error = result.error; loading = false
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 64.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = LocalPlayerContentInset.current)) {
         ScreenTopBar("Popular tracks", onBack)
+        if (loading) LoadingStatus("Loading popular tracks")
+        error?.let { ErrorState(it, { retry++ }) }
+        if (!loading && error == null && songs.isEmpty()) EmptyState("No popular tracks on this server yet.")
         Text(
             artistName,
-            color = p.onBackground.copy(alpha = 0.55f),
+            color = p.textSecondary,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
         )
         songs.forEachIndexed { i, song ->
@@ -275,23 +295,30 @@ fun ArtistAlbumsScreen(
     val client = LocalClient.current
     val p = LocalPalette.current
     var albums by remember(artistId) { mutableStateOf<List<AlbumID3>>(emptyList()) }
-
-    LaunchedEffect(artistId) {
-        albums = suspendRunCatching { client.getArtist(artistId).album }.getOrDefault(emptyList())
+    var loading by remember(artistId) { mutableStateOf(true) }
+    var error by remember(artistId) { mutableStateOf<String?>(null) }
+    var retry by remember(artistId) { mutableIntStateOf(0) }
+    LaunchedEffect(artistId, retry) {
+        loading = true
+        val result = readKeeping(albums) { client.getArtist(artistId).album }
+        albums = result.value.orEmpty(); error = result.error; loading = false
     }
 
     Column(Modifier.fillMaxSize()) {
         ScreenTopBar("Albums", onBack)
+        if (loading) LoadingStatus("Loading albums")
+        error?.let { ErrorState(it, { retry++ }) }
+        if (!loading && error == null && albums.isEmpty()) EmptyState("No albums for this artist yet.")
         Text(
             artistName,
-            color = p.onBackground.copy(alpha = 0.55f),
+            color = p.textSecondary,
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
         )
         LazyVerticalGrid(
             columns = GridCells.Adaptive(140.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 64.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = LocalPlayerContentInset.current),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {

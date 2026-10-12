@@ -74,6 +74,19 @@ class ArtColorSchemeTest {
     }
 
     @Test
+    fun neutralTextAndFocusRolesMeetContrastOnRepresentativeSurfaces() {
+        for (dark in listOf(true, false)) {
+            val backdrops = if (dark) darkBackdrops else lightBackdrops
+            for (seed in seeds) {
+                val s = ArtScheme.from(seed, dark, backdrops, backdrops)
+                assertTrue(m.minContrast(s.textSecondary, backdrops) >= 4.5)
+                assertTrue(m.minContrast(s.textTertiary, backdrops) >= 4.5)
+                assertTrue(m.minContrast(s.focusRing, backdrops) >= 3.0)
+            }
+        }
+    }
+
+    @Test
     fun chromaticArtKeepsItsHueAndGreyArtStaysNeutral() {
         for (dark in listOf(true, false)) {
             val backdrops = if (dark) darkBackdrops else lightBackdrops

@@ -58,6 +58,8 @@ android {
         freeCompilerArgs += listOf("-opt-in=androidx.media3.common.util.UnstableApi")
     }
 
+    testOptions { unitTests.isIncludeAndroidResources = true }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -75,6 +77,11 @@ dependencies {
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     val media3 = "1.5.1"

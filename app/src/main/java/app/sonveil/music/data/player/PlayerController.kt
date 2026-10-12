@@ -46,6 +46,8 @@ data class PlayerUiState(
     val queue: List<Song> = emptyList(),
     val index: Int = 0,
     val isPlaying: Boolean = false,
+    val playWhenReady: Boolean = false,
+    val playbackState: Int = Player.STATE_IDLE,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val palette: SonveilPalette = SonveilPalette.darkDefault(),
@@ -58,6 +60,8 @@ data class PlayerUiState(
     val lyrics: SongLyrics? = null,
 ) {
     val current: Song? get() = queue.getOrNull(index)
+    val isBuffering: Boolean get() = playWhenReady && playbackState == Player.STATE_BUFFERING && playbackError == null
+    val showPause: Boolean get() = playbackError == null && (isPlaying || playWhenReady)
     val upNextIndices: List<Int> get() = upcomingIndices ?: ((index + 1) until queue.size).toList()
     val upNext: List<Song> get() = upNextIndices.mapNotNull(queue::getOrNull)
     fun isFavorite(song: Song): Boolean = favoriteById[song.id] ?: song.isFavorite
@@ -123,7 +127,7 @@ class PlayerController(
                     if (controller === disconnected) {
                         controller = null
                         positionJob?.cancel()
-                        _state.update { it.copy(isPlaying = false) }
+                        _state.update { it.copy(isPlaying = false, playWhenReady = false, playbackState = Player.STATE_IDLE) }
                     }
                 }
             }).buildAsync()
@@ -177,7 +181,8 @@ class PlayerController(
         if (c == null) {
             pendingPlay = PendingQueue(songs.toList(), idx, autoPlay)
             _state.update {
-                it.copy(queue = songs.toList(), index = idx, positionMs = pos, isPlaying = false)
+                it.copy(queue = songs.toList(), index = idx, positionMs = pos, isPlaying = false,
+                    playWhenReady = autoPlay, playbackState = Player.STATE_BUFFERING, playbackError = null)
             }
             connect()
             return
@@ -243,6 +248,12 @@ class PlayerController(
     fun playPause() {
         val c = controller ?: run {
             val st = _state.value
+            val pending = pendingPlay
+            if (st.playWhenReady && pending != null) {
+                pendingPlay = pending.copy(autoPlay = false)
+                _state.update { it.copy(playWhenReady = false) }
+                return
+            }
             if (st.queue.isNotEmpty()) {
                 setQueue(st.queue, st.index, autoPlay = true, positionMs = st.positionMs)
             } else {
@@ -250,7 +261,7 @@ class PlayerController(
             }
             return
         }
-        if (c.isPlaying) {
+        if (c.playWhenReady && c.playerError == null && _state.value.playbackError == null) {
             c.pause()
             return
         }
@@ -634,6 +645,8 @@ class PlayerController(
             it.copy(
                 index = if (it.queue.isEmpty()) 0 else idx.coerceIn(0, it.queue.lastIndex),
                 isPlaying = c.isPlaying,
+                playWhenReady = c.playWhenReady,
+                playbackState = c.playbackState,
                 positionMs = if (preserveRestoredState) it.positionMs else c.currentPosition.coerceAtLeast(0L),
                 durationMs = c.duration.takeIf { d -> d > 0 } ?: (it.queue.getOrNull(idx)?.duration?.times(1000L) ?: 0L),
                 repeatMode = if (preserveRestoredState) it.repeatMode else c.repeatMode,

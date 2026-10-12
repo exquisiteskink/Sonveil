@@ -30,6 +30,7 @@ import app.sonveil.music.data.player.AutoEqCatalog
 import app.sonveil.music.data.player.AutoEqEntry
 import app.sonveil.music.data.player.EqMode
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.textSecondary
 import android.content.Context
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +64,7 @@ fun HeadphoneEqDialog(
                 } else {
                     "Applies the AutoEQ 10-band preset and its preamp."
                 },
-                color = p.onBackground.copy(alpha = 0.65f),
+                color = p.textSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
@@ -84,7 +85,7 @@ fun HeadphoneEqDialog(
                 )
                 query.trim().length < 2 -> Text(
                     "Type at least two letters. ${catalog!!.size} measurements.",
-                    color = p.onBackground.copy(alpha = 0.6f),
+                    color = p.textSecondary,
                     fontSize = 13.sp,
                 )
                 results.isEmpty() -> Text(
@@ -122,7 +123,7 @@ fun HeadphoneEqDialog(
                                 listOf(entry.source, entry.rig, kind, "preamp ${"%.1f".format(pre)} dB")
                                     .filter { it.isNotBlank() }
                                     .joinToString(" · "),
-                                color = p.onBackground.copy(alpha = 0.55f),
+                                color = p.textSecondary,
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -136,7 +137,7 @@ fun HeadphoneEqDialog(
             }
             Text(
                 "Curves from AutoEq by Jaakko Pasanen, MIT.",
-                color = p.onBackground.copy(alpha = 0.4f),
+                color = p.textSecondary,
                 fontSize = 11.sp,
             )
         }

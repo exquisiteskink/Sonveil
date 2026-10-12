@@ -51,7 +51,12 @@ import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
 import app.sonveil.music.ui.theme.LocalPlayerState
-import kotlinx.coroutines.async
+import app.sonveil.music.ui.components.readKeeping
+import app.sonveil.music.ui.components.LoadingStatus
+import app.sonveil.music.ui.components.ErrorState
+import app.sonveil.music.ui.components.EmptyState
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -79,33 +84,31 @@ fun HomeScreen(
     var genres by remember { mutableStateOf<List<Genre>>(emptyList()) }
     var favorites by remember { mutableStateOf<List<Song>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var errors by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var activeShelves by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    suspend fun load() {
+    suspend fun load(only: String? = null) {
+        val requested = (only?.let { setOf(it) } ?: setOf("Playlists", "Recently played", "Albums", "Genres", "Favorites")) - activeShelves
+        if (requested.isEmpty()) return
+        activeShelves = activeShelves + requested
         loading = true
-        error = null
-        try {
-            coroutineScope {
-                val pDef = async { suspendRunCatching { client.getPlaylists() }.getOrDefault(emptyList()) }
-                val rDef = async { suspendRunCatching { client.getAlbumList2("recent", 24) }.getOrDefault(emptyList()) }
-                val nDef = async { suspendRunCatching { client.getAlbumList2("newest", 24) }.getOrDefault(emptyList()) }
-                val gDef = async { suspendRunCatching { client.getGenres() }.getOrDefault(emptyList()) }
-                val fDef = async { suspendRunCatching { client.getStarredSongs() }.getOrDefault(emptyList()) }
-                playlists = pDef.await()
-                recent = rDef.await()
-                newest = nDef.await()
-                genres = gDef.await().filter { it.value.isNotBlank() }.sortedByDescending { it.songCount }.take(24)
-                favorites = fDef.await()
-                if (playlists.isEmpty() && recent.isEmpty() && newest.isEmpty()) {
-                    error = "Could not load library"
+        coroutineScope {
+            suspend fun <T> shelf(name: String, previous: T, read: suspend () -> T, publish: (T) -> Unit) {
+                if (name !in requested) return
+                try {
+                    val result = readKeeping(previous, read)
+                    result.value?.let(publish)
+                    errors = if (result.error == null) errors - name else errors + (name to result.error)
+                } finally {
+                    activeShelves = activeShelves - name
+                    loading = activeShelves.isNotEmpty()
                 }
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            error = e.message
-        } finally {
-            loading = false
+            launch { shelf("Playlists", playlists, { client.getPlaylists() }) { playlists = it } }
+            launch { shelf("Recently played", recent, { client.getAlbumList2("recent", 24) }) { recent = it } }
+            launch { shelf("Albums", newest, { client.getAlbumList2("newest", 24) }) { newest = it } }
+            launch { shelf("Genres", genres, { client.getGenres().filter { it.value.isNotBlank() }.sortedByDescending { it.songCount }.take(24) }) { genres = it } }
+            launch { shelf("Favorites", favorites, { client.getStarredSongs() }) { favorites = it } }
         }
     }
 
@@ -143,7 +146,7 @@ fun HomeScreen(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 64.dp),
+                .padding(bottom = LocalPlayerContentInset.current),
         ) {
             Text(
                 "Home",
@@ -153,8 +156,14 @@ fun HomeScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp),
             )
-            if (error != null && playlists.isEmpty() && recent.isEmpty()) {
-                ErrorText(error ?: "Could not load library")
+            if (loading && playlists.isEmpty() && recent.isEmpty() && newest.isEmpty()) {
+                LoadingStatus("Loading your library")
+            }
+            errors.forEach { (shelf, message) ->
+                ErrorState("$shelf: $message", { scope.launch { load(shelf) } })
+            }
+            if (!loading && errors.isEmpty() && playlists.isEmpty() && newest.isEmpty() && recent.isEmpty() && favorites.isEmpty()) {
+                EmptyState("No music to show yet. Add music on your server, then pull down to refresh.")
             }
 
             androidx.compose.material3.TextButton(onClick = onDownloads) {
@@ -163,10 +172,10 @@ fun HomeScreen(
 
             // Your playlists
             SectionHeader("Your playlists")
-            if (playlists.isEmpty() && !loading) {
+            if (playlists.isEmpty() && !loading && "Playlists" !in errors) {
                 Text(
                     "No playlists yet",
-                    color = p.onBackground.copy(alpha = 0.5f),
+                    color = p.textSecondary,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             } else {

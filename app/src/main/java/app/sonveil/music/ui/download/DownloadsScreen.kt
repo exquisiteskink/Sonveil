@@ -12,6 +12,7 @@ import app.sonveil.music.data.remote.Song
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -28,7 +29,7 @@ fun DownloadsScreen(onBack: () -> Unit) {
             }.orEmpty()
         }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalPlayerContentInset.current)) {
         item {
             TextButton(onClick = onBack) { Text("Back") }
             Text("Downloads", color = palette.onBackground, modifier = Modifier.padding(16.dp))

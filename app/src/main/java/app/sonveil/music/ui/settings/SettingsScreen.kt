@@ -48,6 +48,8 @@ import app.sonveil.music.data.player.ReplayGainMode
 import app.sonveil.music.ui.components.GlassSurface
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
 import app.sonveil.music.ui.theme.ThemeMode
 import app.sonveil.music.ui.theme.sonveilSliderColors
 
@@ -153,7 +155,7 @@ fun SettingsScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 12.dp)
-            .padding(bottom = 64.dp),
+            .padding(bottom = LocalPlayerContentInset.current),
     ) {
         Text(
             "Settings",
@@ -168,11 +170,11 @@ fun SettingsScreen(
         SettingsGroup("Account") {
             Text(server, color = p.onBackground, fontWeight = FontWeight.Medium)
             if (user.isNotBlank()) {
-                Text(user, color = p.onBackground.copy(alpha = 0.6f), fontSize = 13.sp)
+                Text(user, color = p.textSecondary, fontSize = 13.sp)
             }
             Text(
                 "Login uses salted token auth (or an API key). The password is encrypted in Android Keystore.",
-                color = p.onBackground.copy(alpha = 0.45f),
+                color = p.textSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -268,7 +270,7 @@ fun SettingsScreen(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Crossfade length ${PlayerSettings.crossfadeLabel(fadeMs.toInt())}",
-                    color = p.onBackground.copy(alpha = 0.7f),
+                    color = p.textSecondary,
                     fontSize = 13.sp,
                 )
                 Slider(
@@ -330,11 +332,11 @@ fun SettingsScreen(
             val usedMb = dlState.bytesUsed / (1024.0 * 1024.0)
             Text(
                 if (dlState.bytesUsed > 0) "Stored offline  %.1f MB".format(usedMb) else "No offline files yet",
-                color = p.onBackground.copy(alpha = 0.7f),
+                color = p.textSecondary,
                 fontSize = 13.sp,
             )
             if (dlState.phase.name != "Idle" && !dlState.message.isNullOrBlank()) {
-                Text(dlState.message ?: "", color = p.onBackground.copy(alpha = 0.5f), fontSize = 12.sp)
+                Text(dlState.message ?: "", color = p.textSecondary, fontSize = 12.sp)
             }
             TextButton(onClick = { downloads.refreshBytes() }) {
                 Text("Refresh size")
@@ -353,7 +355,7 @@ fun SettingsScreen(
             )
             Text(
                 "The curve is saved for this output and loads again when it connects.",
-                color = p.onBackground.copy(alpha = 0.6f),
+                color = p.textSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
             )
@@ -368,7 +370,7 @@ fun SettingsScreen(
                             Text(profile.name, color = p.onBackground, fontSize = 14.sp)
                             Text(
                                 profile.curveLabel,
-                                color = p.onBackground.copy(alpha = 0.55f),
+                                color = p.textSecondary,
                                 fontSize = 12.sp,
                             )
                         }
@@ -419,7 +421,7 @@ fun SettingsScreen(
             if (eqHeadphone.isNotBlank()) {
                 Text(
                     "$eqHeadphone · saved for ${output.name}",
-                    color = p.onBackground.copy(alpha = 0.7f),
+                    color = p.textSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 6.dp),
                 )
@@ -532,10 +534,10 @@ fun SettingsScreen(
 
         SettingsGroup("About") {
             Text("Sonveil", color = p.onBackground, fontWeight = FontWeight.SemiBold)
-            Text(BuildConfig.VERSION_NAME, color = p.onBackground.copy(alpha = 0.5f), fontSize = 13.sp)
+            Text(BuildConfig.VERSION_NAME, color = p.textSecondary, fontSize = 13.sp)
             Text(
                 "A listening app for Navidrome, Subsonic, and OpenSubsonic.",
-                color = p.onBackground.copy(alpha = 0.5f),
+                color = p.textSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -548,7 +550,7 @@ private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> 
     val p = LocalPalette.current
     Text(
         title.uppercase(),
-        color = p.onBackground.copy(alpha = 0.5f),
+        color = p.textSecondary,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 1.2.sp,
@@ -561,7 +563,7 @@ private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> 
 @Composable
 private fun Hint(text: String) {
     val p = LocalPalette.current
-    Text(text, color = p.onBackground.copy(alpha = 0.45f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    Text(text, color = p.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
 }
 
 @Composable
@@ -594,7 +596,7 @@ private fun ToggleRow(
     ) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(title, color = p.onBackground.copy(alpha = if (enabled) 1f else 0.4f), fontSize = 15.sp)
-            Text(subtitle, color = p.onBackground.copy(alpha = 0.45f), fontSize = 12.sp)
+            Text(subtitle, color = p.textSecondary, fontSize = 12.sp)
         }
         Switch(
             checked = checked,
@@ -642,7 +644,7 @@ private fun AutoEqSearchField(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("Search AutoEQ", color = p.onBackground, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-        Text("Headphones", color = p.onBackground.copy(alpha = 0.5f), fontSize = 12.sp)
+        Text("Headphones", color = p.textSecondary, fontSize = 12.sp)
     }
 }
 

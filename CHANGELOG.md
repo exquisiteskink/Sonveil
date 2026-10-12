@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Show explicit loading, failure, retry, and genuinely empty library states; keep Back available when details fail.
+- Guard search and album pagination against stale responses and duplicate in-flight page requests; retain confirmed pages on failure.
+- Keep the flat seek bar while adding screen-reader progress actions, keyboard seeking, and visible focus feedback.
+- Show sustained buffering honestly and allow pausing pending playback before the media session connects.
+- Use readable metadata/error roles in both themes and keep saturated light artwork washes luminous enough for dark text.
+- Adapt Now Playing to short windows and large text, keep transport/queue access visible, and hide inactive sheets from accessibility navigation.
+- Reserve measured mini-player space in scrolling screens, use an adaptive artist grid, and allocate 48dp player metadata actions.
+- Label technical format information as source-file metadata rather than device-output quality.
+
+### Validation
+- 171 debug JVM/Robolectric tests passed; debug APK built.
+- Debug/release lint: no errors, 37 warnings and 5 informational findings each.
+- Device visuals, TalkBack, physical keyboard, live server, and audio checks remain pending. See `docs/design-review/P0-IMPLEMENTATION.md` for scope and acceptance gaps.
+
 ## 1.3.14 — 2026-10-10
 
 ### What's new

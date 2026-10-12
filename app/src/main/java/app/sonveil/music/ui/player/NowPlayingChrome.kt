@@ -1,22 +1,13 @@
 package app.sonveil.music.ui.player
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.splineBasedDecay
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.gestures.AnchoredDraggableState
-import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.animateTo
-import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
@@ -53,48 +43,40 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import app.sonveil.music.data.player.PlayerUiState
-import app.sonveil.music.data.remote.formatDurationMs
 import app.sonveil.music.ui.components.AlbumCoverArt
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.SonveilMotion
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
-import app.sonveil.music.ui.theme.UltraBlurBackground
 import app.sonveil.music.ui.theme.seekColors
 import app.sonveil.music.ui.theme.sonveilGlass
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ripple
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.theme.focusRing
+import app.sonveil.music.ui.theme.SonveilSize
 
 @Composable
 internal fun MetaRow(
@@ -107,39 +89,26 @@ internal fun MetaRow(
     onToggleLyrics: () -> Unit,
 ) {
     val p = LocalPalette.current
-    val mute = p.onBackground.copy(alpha = 0.45f)
-    val audioFormat = listOfNotNull(
-        bitDepth.takeIf { it > 0 }?.let { "$it-bit" },
-        sampleRate?.takeIf { it.isNotBlank() },
-    ).joinToString(" · ")
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        if (!codec.isNullOrBlank()) {
-            Text(codec, color = mute, fontSize = 13.sp, letterSpacing = 1.4.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.width(12.dp))
-        }
-        IconButton(onClick = onToggleLyrics, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Rounded.Lyrics,
-                contentDescription = if (lyricsOpen) "Hide lyrics" else "Show lyrics",
-                tint = if (lyricsOpen) p.primary else mute,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-        IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
-            Icon(
-                if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = if (favorite) "Remove from favorites" else "Add to favorites",
-                tint = if (favorite) p.primary else mute,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-        if (audioFormat.isNotEmpty()) {
-            Spacer(Modifier.width(12.dp))
-            Text(audioFormat, color = mute, fontSize = 13.sp, letterSpacing = 0.6.sp, fontWeight = FontWeight.Medium)
+    val audioFormat = listOfNotNull(codec?.takeIf { it.isNotBlank() },
+        bitDepth.takeIf { it > 0 }?.let { "$it-bit" }, sampleRate?.takeIf { it.isNotBlank() }).joinToString(" · ")
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (audioFormat.isNotEmpty()) Text("Source file · $audioFormat", color = p.textSecondary,
+            style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconButton(onClick = onToggleLyrics, modifier = Modifier.size(SonveilSize.Action).semantics {
+                stateDescription = if (lyricsOpen) "Lyrics shown" else "Lyrics hidden"
+            }) {
+                Icon(Icons.Rounded.Lyrics, if (lyricsOpen) "Hide lyrics" else "Show lyrics",
+                    tint = if (lyricsOpen) p.primary else p.textSecondary, modifier = Modifier.size(22.dp))
+            }
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(SonveilSize.Action).semantics {
+                stateDescription = if (favorite) "Favorite" else "Not a favorite"
+            }) {
+                Icon(if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    if (favorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (favorite) p.primary else p.textSecondary, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -171,7 +140,7 @@ internal fun LyricsPane(
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     "No lyrics on the server for this track",
-                    color = p.onBackground.copy(alpha = 0.55f),
+                    color = p.textSecondary,
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
                 )
@@ -182,7 +151,7 @@ internal fun LyricsPane(
                     val current = i == active
                     Text(
                         line.value,
-                        color = p.onBackground.copy(alpha = if (current) 1f else 0.42f),
+                        color = if (current) p.onBackground else p.textSecondary,
                         fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
                         fontSize = if (current) 18.sp else 15.sp,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -198,14 +167,16 @@ internal fun LyricsPane(
 internal fun QueuePage(
     ui: PlayerUiState,
     onClose: () -> Unit,
+    modifier: Modifier = Modifier,
     headerModifier: Modifier = Modifier,
+    closeModifier: Modifier = Modifier,
 ) {
     val player = LocalPlayer.current
     val p = LocalPalette.current
     val song = ui.current ?: return
 
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding(),
@@ -217,19 +188,19 @@ internal fun QueuePage(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.KeyboardArrowDown, "Back", tint = p.onBackground)
+            IconButton(onClick = onClose, modifier = closeModifier) {
+                Icon(Icons.Rounded.KeyboardArrowDown, "Back to player", tint = p.onBackground)
             }
             AlbumCoverArt(song.albumId, Modifier.size(44.dp), song.title, corner = 4.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(song.title, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                Text(song.artist.orEmpty(), color = p.onBackground.copy(alpha = 0.55f), maxLines = 1, fontSize = 12.sp)
+                Text(song.artist.orEmpty(), color = p.textSecondary, maxLines = 1, fontSize = 12.sp)
             }
             IconButton(onClick = { player.playPause() }) {
                 Icon(
-                    if (ui.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    if (ui.isPlaying) "Pause" else "Play",
+                    if (ui.showPause) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    if (ui.showPause) "Pause" else "Play",
                     tint = p.onBackground,
                 )
             }
@@ -255,7 +226,7 @@ internal fun QueuePage(
                 item {
                     Text(
                         "Nothing else queued",
-                        color = p.onBackground.copy(alpha = 0.5f),
+                        color = p.textSecondary,
                         modifier = Modifier.padding(24.dp),
                     )
                 }
@@ -271,6 +242,7 @@ internal fun PositionAwareMiniBar(
     modifier: Modifier = Modifier,
     onPlayPause: () -> Unit,
     onRetry: () -> Unit = onPlayPause,
+    onHeightChanged: (Int) -> Unit = {},
 ) {
     MiniBar(
         ui = ui,
@@ -278,6 +250,7 @@ internal fun PositionAwareMiniBar(
         modifier = modifier,
         onPlayPause = onPlayPause,
         onRetry = onRetry,
+        onHeightChanged = onHeightChanged,
     )
 }
 
@@ -288,6 +261,7 @@ internal fun MiniBar(
     modifier: Modifier = Modifier,
     onPlayPause: () -> Unit,
     onRetry: () -> Unit = onPlayPause,
+    onHeightChanged: (Int) -> Unit = {},
 ) {
     val p = LocalPalette.current
     val song = ui.current ?: return
@@ -296,7 +270,8 @@ internal fun MiniBar(
     Column(
         modifier
             .fillMaxWidth()
-            .sonveilGlass(p, 16.dp, opaque = true),
+            .sonveilGlass(p, 16.dp, opaque = true)
+            .onSizeChanged { onHeightChanged(it.height) },
     ) {
         val seek = p.seekColors
         val seekSpec = SonveilMotion.emphasized<androidx.compose.ui.graphics.Color>(SonveilMotion.DurationPaletteMs)
@@ -311,7 +286,7 @@ internal fun MiniBar(
             )
         }
         Row(
-            Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
+            Modifier.fillMaxWidth().heightIn(min = SonveilSize.MiniPlayer - 3.dp).padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AlbumCoverArt(
@@ -325,27 +300,20 @@ internal fun MiniBar(
                 Text(song.title, color = p.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text(
                     err ?: song.artist.orEmpty(),
-                    color = if (err != null) p.primary else p.onBackground.copy(alpha = 0.7f),
+                    color = p.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
                 )
             }
             if (err != null) {
-                Text(
-                    "Retry",
-                    modifier = Modifier
-                        .clickable(onClick = onRetry)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    color = p.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                )
+                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = SonveilSize.Action)) { Text("Retry") }
             }
+            PlaybackStatus(ui, compact = true)
             IconButton(onClick = if (err != null) onRetry else onPlayPause) {
                 Icon(
-                    if (ui.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    if (err != null) "Retry" else if (ui.isPlaying) "Pause" else "Play",
+                    if (ui.showPause) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    if (err != null) "Retry" else if (ui.showPause) "Pause" else "Play",
                     tint = p.onBackground,
                 )
             }
@@ -357,60 +325,68 @@ internal fun MiniBar(
 internal fun ControlsDeck(ui: PlayerUiState) {
     val player = LocalPlayer.current
     val p = LocalPalette.current
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        IconButton(onClick = { player.toggleShuffle() }) {
-            Icon(
-                Icons.Rounded.Shuffle,
-                "Shuffle",
-                tint = if (ui.shuffle) p.primary else p.onBackground.copy(alpha = 0.32f),
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        IconButton(onClick = { player.previous() }) {
-            Icon(Icons.Rounded.SkipPrevious, "Previous", tint = p.onBackground, modifier = Modifier.size(42.dp))
-        }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val playSize = (maxWidth - SonveilSize.Action * 4).coerceIn(SonveilSize.Action, 82.dp)
         val playInteraction = remember { MutableInteractionSource() }
         val playPressed by playInteraction.collectIsPressedAsState()
+        val playFocused by playInteraction.collectIsFocusedAsState()
         val playScale by animateFloatAsState(
             targetValue = if (playPressed) 0.92f else 1f,
             animationSpec = SonveilMotion.standard(SonveilMotion.DurationPressMs),
             label = "play-press",
         )
-        Box(
-            Modifier
-                .scale(playScale)
-                .size(82.dp)
-                .shadow(8.dp, CircleShape)
-                .clip(CircleShape)
-                .background(p.playButton)
-                .clickable(
-                    interactionSource = playInteraction,
-                    indication = null,
-                    onClick = { player.playPause() },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (ui.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                if (ui.isPlaying) "Pause" else "Play",
-                tint = p.onPlayButton,
-                modifier = Modifier.size(40.dp),
-            )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly) {
+            IconButton(onClick = { player.toggleShuffle() }, modifier = Modifier.semantics {
+                stateDescription = if (ui.shuffle) "Shuffle on" else "Shuffle off"
+            }) {
+                Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (ui.shuffle) p.primary else p.textSecondary,
+                    modifier = Modifier.size(28.dp))
+            }
+            IconButton(onClick = { player.previous() }) {
+                Icon(Icons.Rounded.SkipPrevious, "Previous", tint = p.onBackground, modifier = Modifier.size(42.dp))
+            }
+            Box(Modifier.size(playSize).shadow(8.dp, CircleShape).clip(CircleShape).background(p.playButton)
+                .then(if (playFocused) Modifier.border(2.dp, p.focusRing, CircleShape) else Modifier)
+                .clickable(interactionSource = playInteraction, indication = ripple(), role = Role.Button,
+                    onClick = { player.playPause() }), contentAlignment = Alignment.Center) {
+                // Animate the icon, not the allocated touch/focus bounds.
+                Icon(if (ui.showPause) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    if (ui.showPause) "Pause" else "Play", tint = p.onPlayButton,
+                    modifier = Modifier.size(40.dp).scale(playScale))
+            }
+            IconButton(onClick = { player.next() }) {
+                Icon(Icons.Rounded.SkipNext, "Next", tint = p.onBackground, modifier = Modifier.size(42.dp))
+            }
+            IconButton(onClick = { player.toggleRepeat() }, modifier = Modifier.semantics {
+                stateDescription = when (ui.repeatMode) {
+                    Player.REPEAT_MODE_ONE -> "Repeat one song"
+                    Player.REPEAT_MODE_ALL -> "Repeat all songs"
+                    else -> "Repeat off"
+                }
+            }) {
+                Icon(if (ui.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                    "Repeat", tint = if (ui.repeatMode != Player.REPEAT_MODE_OFF) p.primary else p.textSecondary,
+                    modifier = Modifier.size(28.dp))
+            }
         }
-        IconButton(onClick = { player.next() }) {
-            Icon(Icons.Rounded.SkipNext, "Next", tint = p.onBackground, modifier = Modifier.size(42.dp))
-        }
-        IconButton(onClick = { player.toggleRepeat() }) {
-            Icon(
-                if (ui.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                "Repeat",
-                tint = if (ui.repeatMode != Player.REPEAT_MODE_OFF) p.primary else p.onBackground.copy(alpha = 0.32f),
-                modifier = Modifier.size(28.dp),
-            )
-        }
+    }
+}
+
+/** Delay short stalls so normal track starts do not flash a loading indicator. */
+@Composable
+internal fun PlaybackStatus(ui: PlayerUiState, compact: Boolean = false) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(ui.isBuffering) {
+        visible = false
+        if (ui.isBuffering) { delay(400); visible = true }
+    }
+    if (visible && ui.isBuffering) {
+        if (compact) androidx.compose.material3.CircularProgressIndicator(
+            Modifier.size(20.dp).semantics { contentDescription = "Buffering"; liveRegion = LiveRegionMode.Polite },
+            strokeWidth = 2.dp)
+        else Text("Buffering…", color = LocalPalette.current.textSecondary,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite })
     }
 }

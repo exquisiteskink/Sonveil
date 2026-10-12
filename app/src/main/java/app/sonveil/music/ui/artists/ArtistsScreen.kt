@@ -36,10 +36,13 @@ import androidx.compose.ui.unit.sp
 import app.sonveil.music.data.remote.ArtistID3
 import app.sonveil.music.ui.components.ArtistListRow
 import app.sonveil.music.ui.components.ArtistTile
-import app.sonveil.music.ui.components.ErrorText
 import app.sonveil.music.ui.settings.AppearancePrefs
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.components.ErrorState
+import app.sonveil.music.ui.components.libraryError
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +66,7 @@ fun ArtistsScreen(onArtist: (String) -> Unit) {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message
+            error = libraryError(e)
         } finally {
             loading = false
         }
@@ -74,15 +77,15 @@ fun ArtistsScreen(onArtist: (String) -> Unit) {
     PullToRefreshBox(isRefreshing = loading, onRefresh = { scope.launch { load() } }) {
         if (grid) {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
+                columns = GridCells.Adaptive(112.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 64.dp),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = LocalPlayerContentInset.current),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) { ArtistsHeader(grid) { grid = it; prefs.artistGrid = it } }
                 if (error != null && artists.isEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { ErrorText(error ?: "") }
+                    item(span = { GridItemSpan(maxLineSpan) }) { ErrorState(error ?: "", { scope.launch { load() } }) }
                 }
                 items(artists, key = { it.id }) { artist ->
                     ArtistTile(artist, onClick = { onArtist(artist.id) })
@@ -91,11 +94,11 @@ fun ArtistsScreen(onArtist: (String) -> Unit) {
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 64.dp),
+                contentPadding = PaddingValues(bottom = LocalPlayerContentInset.current),
             ) {
                 item { ArtistsHeader(grid) { grid = it; prefs.artistGrid = it } }
                 if (error != null && artists.isEmpty()) {
-                    item { ErrorText(error ?: "") }
+                    item { ErrorState(error ?: "", { scope.launch { load() } }) }
                 }
                 items(artists, key = { it.id }) { artist ->
                     ArtistListRow(artist, onClick = { onArtist(artist.id) })
@@ -123,14 +126,14 @@ private fun ArtistsHeader(grid: Boolean, onGrid: (Boolean) -> Unit) {
             Icon(
                 Icons.Rounded.GridView,
                 contentDescription = "Grid",
-                tint = if (grid) p.onBackground else p.onBackground.copy(alpha = 0.35f),
+                tint = if (grid) p.primary else p.textSecondary,
             )
         }
         IconButton(onClick = { onGrid(false) }) {
             Icon(
                 Icons.AutoMirrored.Rounded.ViewList,
                 contentDescription = "List",
-                tint = if (!grid) p.onBackground else p.onBackground.copy(alpha = 0.35f),
+                tint = if (!grid) p.primary else p.textSecondary,
             )
         }
     }

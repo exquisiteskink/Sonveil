@@ -37,6 +37,10 @@ import app.sonveil.music.data.player.PlayerUiState
 import app.sonveil.music.data.remote.SubsonicClient
 
 val LocalPalette = staticCompositionLocalOf { SonveilPalette.darkDefault() }
+
+val SonveilPalette.textSecondary: Color get() = Color(scheme.textSecondary)
+val SonveilPalette.textTertiary: Color get() = Color(scheme.textTertiary)
+val SonveilPalette.focusRing: Color get() = Color(scheme.focusRing)
 val LocalClient = staticCompositionLocalOf<SubsonicClient> { error("SubsonicClient not provided") }
 val LocalPlayer = staticCompositionLocalOf<PlayerController> { error("PlayerController not provided") }
 val LocalPlayerState = staticCompositionLocalOf<State<PlayerUiState>> { error("Player state not provided") }
@@ -45,11 +49,12 @@ val LocalContainer = staticCompositionLocalOf<AppContainer> { error("AppContaine
 private val SonveilTypography = Typography(
     displayLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, letterSpacing = (-0.4).sp),
     headlineLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.2).sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 20.sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
     titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
     titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp),
     bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
+    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
     labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 13.sp, letterSpacing = 0.8.sp),
 )
 

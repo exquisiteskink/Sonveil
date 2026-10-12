@@ -49,6 +49,9 @@ import app.sonveil.music.data.remote.SubsonicException
 import app.sonveil.music.ui.components.GlassSurface
 import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.theme.focusRing
+import androidx.compose.material3.MaterialTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -87,10 +90,10 @@ fun LoginScreen() {
     }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = p.onBackground.copy(alpha = 0.45f),
+        focusedBorderColor = p.focusRing,
         unfocusedBorderColor = p.onBackground.copy(alpha = 0.18f),
-        focusedLabelColor = p.onBackground.copy(alpha = 0.7f),
-        unfocusedLabelColor = p.onBackground.copy(alpha = 0.5f),
+        focusedLabelColor = p.textSecondary,
+        unfocusedLabelColor = p.textSecondary,
         cursorColor = p.onBackground,
         focusedTextColor = p.onBackground,
         unfocusedTextColor = p.onBackground,
@@ -110,7 +113,7 @@ fun LoginScreen() {
         Text("Sonveil", color = p.onBackground, fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Text(
             "Navidrome · Subsonic · OpenSubsonic",
-            color = p.onBackground.copy(alpha = 0.55f),
+            color = p.textSecondary,
             fontSize = 13.sp,
         )
         Spacer(Modifier.height(28.dp))
@@ -172,7 +175,7 @@ fun LoginScreen() {
                             Icon(
                                 if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                 contentDescription = if (showPassword) "Hide password" else "Show password",
-                                tint = p.onBackground.copy(alpha = 0.6f),
+                                tint = p.textSecondary,
                             )
                         }
                     },
@@ -192,11 +195,17 @@ fun LoginScreen() {
             TextButton(onClick = { showApiKey = !showApiKey }) {
                 Text(
                     if (showApiKey) "Use username & password" else "Use OpenSubsonic API key",
-                    color = p.onBackground.copy(alpha = 0.75f),
+                    color = p.textSecondary,
                 )
             }
             if (error != null) {
-                Text(error!!, color = Color(0xFFFF8A80), fontSize = 13.sp)
+                androidx.compose.material3.Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text(error!!, color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp))
+                }
                 Spacer(Modifier.height(8.dp))
             }
             Button(
@@ -246,7 +255,7 @@ fun LoginScreen() {
         Spacer(Modifier.height(16.dp))
         Text(
             "Passwords are encrypted in Android Keystore. Sign-in uses salted token auth when the server allows it. LAN HTTP requires explicit consent; HTTPS is required on the public internet.",
-            color = p.onBackground.copy(alpha = 0.4f),
+            color = p.textSecondary,
             fontSize = 11.sp,
             modifier = Modifier.padding(horizontal = 8.dp),
         )

@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,10 @@ import app.sonveil.music.ui.theme.LocalContainer
 import app.sonveil.music.ui.theme.LocalClient
 import app.sonveil.music.ui.theme.LocalPalette
 import app.sonveil.music.ui.theme.LocalPlayer
+import app.sonveil.music.ui.theme.LocalPlayerContentInset
+import app.sonveil.music.ui.theme.textSecondary
+import app.sonveil.music.ui.components.DetailLoadingScreen
+import app.sonveil.music.ui.components.libraryError
 
 @Composable
 fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
@@ -57,19 +62,21 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
     var playlist by remember(playlistId) { mutableStateOf<PlaylistWithSongs?>(null) }
     var error by remember(playlistId) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(playlistId) {
+    var retryEpoch by remember(playlistId) { mutableIntStateOf(0) }
+    LaunchedEffect(playlistId, retryEpoch) {
+        error = null
         try {
             playlist = client.getPlaylist(playlistId)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message
+            error = libraryError(e)
         }
     }
 
     val current = playlist
     if (current == null) {
-        if (error != null) ErrorText(error ?: "")
+        DetailLoadingScreen("Playlist", onBack, error, { retryEpoch++ })
         return
     }
 
@@ -78,7 +85,7 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
     LazyColumn(
         Modifier
             .fillMaxSize()
-            .padding(bottom = 64.dp),
+            .padding(bottom = LocalPlayerContentInset.current),
     ) {
         item {
             ScreenTopBar(current.name, onBack)
@@ -101,7 +108,7 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
                         HeaderPlay(onClick = { player.play(current.entry, 0) }, size = 64.dp)
                         Spacer(Modifier.height(8.dp))
                         IconButton(onClick = { player.play(current.entry.shuffled(), 0) }) {
-                            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = p.onBackground.copy(alpha = 0.75f))
+                            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = p.textSecondary)
                         }
                         IconButton(
                             onClick = {
@@ -110,8 +117,7 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
                         ) {
                             val tint = when (dlState.phase) {
                                 DownloadPhase.Running -> p.primary
-                                DownloadPhase.PausedWifi, DownloadPhase.Failed -> p.onBackground.copy(alpha = 0.45f)
-                                else -> p.onBackground.copy(alpha = 0.75f)
+                                else -> p.textSecondary
                             }
                             Icon(Icons.Rounded.Download, "Download playlist", tint = tint)
                         }
@@ -120,7 +126,7 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
             }
             Text(
                 stats,
-                color = p.onBackground.copy(alpha = 0.55f),
+                color = p.textSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.End,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
@@ -137,7 +143,7 @@ fun PlaylistScreen(playlistId: String, onBack: () -> Unit) {
                 if (status.isNotBlank()) {
                     Text(
                         status,
-                        color = p.onBackground.copy(alpha = 0.55f),
+                        color = p.textSecondary,
                         fontSize = 12.sp,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     )

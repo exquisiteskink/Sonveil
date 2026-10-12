@@ -54,7 +54,8 @@ data class SonveilPalette(
         internal fun withScheme(base: SonveilPalette, seed: Int, fromArt: Boolean): SonveilPalette {
             val backdrops = listOf(base.background, base.surface, base.surfaceHigh, base.blurA, base.blurB, base.blurC)
                 .map { it.toArgb() }
-            val textBackdrops = listOf(base.surface, base.surfaceHigh).map { it.toArgb() }
+            // TextButtons and artist actions also sit directly on the artwork wash.
+            val textBackdrops = backdrops
             val scheme = ArtScheme.from(seed, base.isDark, backdrops, textBackdrops)
             return base.copy(
                 primary = Color(scheme.primary),
@@ -217,9 +218,9 @@ object PaletteExtractor {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(toArgb(), hsv)
         if (hsv[1] < 0.08f) hsv[1] = 0.12f
-        hsv[1] = (hsv[1] * 0.85f).coerceIn(0.16f, sat.coerceIn(0.16f, 0.62f))
-        hsv[2] = hsv[2].coerceIn(minV, maxV)
-        if (hsv[2] < minV) hsv[2] = minV
+        // Keep light washes luminous enough for opaque dark text, including saturated blue art.
+        hsv[1] = (hsv[1] * 0.85f).coerceIn(0.08f, sat.coerceIn(0.08f, 0.20f))
+        hsv[2] = hsv[2].coerceIn(max(minV, 0.78f), max(maxV, 0.78f))
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 

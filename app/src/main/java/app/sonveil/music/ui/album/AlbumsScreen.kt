@@ -2,136 +2,68 @@ package app.sonveil.music.ui.album
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.sonveil.music.data.remote.AlbumID3
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.sonveil.music.data.remote.MusicFolder
 import app.sonveil.music.data.remote.suspendRunCatching
-import app.sonveil.music.ui.components.AlbumListRow
-import app.sonveil.music.ui.components.ErrorText
-import app.sonveil.music.ui.components.ScreenTopBar
-import app.sonveil.music.ui.theme.LocalClient
-import app.sonveil.music.ui.theme.LocalPalette
+import app.sonveil.music.ui.components.*
+import app.sonveil.music.ui.theme.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 private const val PAGE = 60
 
 @Composable
-fun AlbumsScreen(
-    onBack: () -> Unit,
-    onAlbum: (String) -> Unit,
-) {
+fun AlbumsScreen(onBack: () -> Unit, onAlbum: (String) -> Unit) {
     val client = LocalClient.current
     val p = LocalPalette.current
+    val scope = rememberCoroutineScope()
+    val pager = remember(client, scope) { AlbumPager(scope, { folder, offset ->
+        client.getAlbumList2("alphabeticalByName", PAGE, offset, folder)
+    }) }
+    val page by pager.state.collectAsStateWithLifecycle()
     var folders by remember { mutableStateOf<List<MusicFolder>>(emptyList()) }
     var folderId by remember { mutableStateOf<String?>(null) }
-    var albums by remember { mutableStateOf<List<AlbumID3>>(emptyList()) }
-    var offset by remember { mutableStateOf(0) }
-    var more by remember { mutableStateOf(true) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
 
-    suspend fun loadPage(reset: Boolean) {
-        if (loading) return
-        if (!reset && !more) return
-        loading = true
-        val start = if (reset) 0 else offset
-        try {
-            val page = client.getAlbumList2("alphabeticalByName", PAGE, start, folderId)
-            albums = if (reset) page else albums + page.filter { next -> albums.none { it.id == next.id } }
-            offset = start + page.size
-            more = page.size >= PAGE
-            error = null
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (albums.isEmpty()) error = e.message
-            more = false
-        } finally {
-            loading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        folders = suspendRunCatching { client.getMusicFolders() }.getOrDefault(emptyList())
-    }
-    // One coroutine owns the selected folder's initial load and pagination.
-    // Switching folders cancels its request before starting the new one.
-    LaunchedEffect(client, folderId) {
-        albums = emptyList()
-        offset = 0
-        more = true
-        error = null
+    LaunchedEffect(client) { folders = suspendRunCatching { client.getMusicFolders() }.getOrDefault(emptyList()) }
+    LaunchedEffect(pager, folderId) {
+        pager.selectFolder(folderId)
         listState.scrollToItem(0)
-        loadPage(reset = true)
-        snapshotFlow {
-            (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) to albums.size
-        }
-            .distinctUntilChanged()
-            .collect { (last, _) ->
-                if (more && !loading && albums.isNotEmpty() && last >= albums.size - 8) {
-                    loadPage(reset = false)
-                }
+    }
+    LaunchedEffect(pager, listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .distinctUntilChanged().collect { last ->
+                val current = pager.state.value
+                if (current.albums.isNotEmpty() && current.error == null && last >= current.albums.size - 8) pager.loadMore()
             }
     }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 88.dp),
-    ) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = LocalPlayerContentInset.current)) {
         item { ScreenTopBar("Albums", onBack) }
-        if (folders.size > 1) {
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item {
-                        FolderChip("All", folderId == null) { folderId = null }
-                    }
-                    items(folders, key = { it.id }) { folder ->
-                        FolderChip(folder.name.ifBlank { "Library" }, folderId == folder.id) {
-                            folderId = folder.id
-                        }
-                    }
+        if (folders.size > 1) item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FolderChip("All", folderId == null) { folderId = null } }
+                items(folders, key = { it.id }) { folder ->
+                    FolderChip(folder.name.ifBlank { "Library" }, folderId == folder.id) { folderId = folder.id }
                 }
             }
         }
-        if (error != null && albums.isEmpty()) {
-            item { ErrorText(error ?: "") }
-        }
-        items(albums, key = { it.id }) { album ->
-            AlbumListRow(album, onClick = { onAlbum(album.id) })
-        }
-        if (loading) {
-            item {
-                Text(
-                    "Loading albums",
-                    color = p.onBackground.copy(alpha = 0.5f),
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(20.dp),
-                )
-            }
+        items(page.albums, key = { it.id }) { album -> AlbumListRow(album, onClick = { onAlbum(album.id) }) }
+        if (page.loading) item { LoadingStatus("Loading albums") }
+        page.error?.let { message -> item { ErrorState(message, pager::loadMore) } }
+        if (!page.loading && page.error == null && !page.more && page.albums.isEmpty()) {
+            item { EmptyState("No albums in this library yet. Add music on your server, then refresh.") }
+            item { androidx.compose.material3.TextButton(onClick = { pager.selectFolder(folderId) }) { Text("Refresh") } }
         }
     }
 }
@@ -139,16 +71,11 @@ fun AlbumsScreen(
 @Composable
 private fun FolderChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val p = LocalPalette.current
-    Text(
-        label,
-        color = if (selected) p.background else p.onBackground,
-        fontSize = 13.sp,
-        modifier = Modifier
-            .background(
-                if (selected) p.onBackground else p.onBackground.copy(alpha = 0.12f),
-                RoundedCornerShape(20.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
+    Box(Modifier.heightIn(min = SonveilSize.Action)
+        .semantics { this.selected = selected }
+        .background(if (selected) p.primary else p.surfaceHigh, RoundedCornerShape(24.dp))
+        .clickable(role = Role.Button, onClick = onClick)
+        .padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(label, color = if (selected) p.onPrimary else p.onBackground, fontSize = 14.sp)
+    }
 }
