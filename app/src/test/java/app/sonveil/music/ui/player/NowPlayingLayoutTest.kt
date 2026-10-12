@@ -7,6 +7,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -44,6 +45,27 @@ class NowPlayingLayoutTest {
         compose.onNodeWithContentDescription("Playback position").performScrollTo().assertIsDisplayed()
         compose.onNodeWithContentDescription("Show lyrics").performScrollTo().assertHeightIsAtLeast(48.dp)
         compose.onNodeWithContentDescription("Add to favorites").assertWidthIsAtLeast(48.dp)
+    }
+
+    @Test
+    @Config(qualifiers = "w1056dp-h430dp")
+    fun largeTextLandscapeKeepsArtworkSquareInsideReservedPane() {
+        compose.setContent { CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+            SonveilTheme(SonveilPalette.lightDefault(), ThemeMode.Light) {
+                Box(Modifier.size(1056.dp, 430.dp)) {
+                    NowPlayingContent(PlayerUiState(queue = listOf(song), durationMs = 60_000), 10_000, false,
+                        {}, {}, {}, {}, {}, {}, {},
+                        artwork = { Box(it.testTag("Artwork")) },
+                        controls = { TextButton(onClick = {}) { Text("Play") } })
+                }
+            }
+        } }
+        val bounds = compose.onNodeWithTag("Artwork").getUnclippedBoundsInRoot()
+        org.junit.Assert.assertEquals("Artwork must not be independently squeezed on one axis",
+            (bounds.right - bounds.left).value, (bounds.bottom - bounds.top).value, 1f)
+        compose.onNodeWithText("Play").assertIsDisplayed()
+        compose.onNodeWithText("Up next · 0 songs").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Show lyrics").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun miniPlayerReportsItsActualLargeTextHeight() {

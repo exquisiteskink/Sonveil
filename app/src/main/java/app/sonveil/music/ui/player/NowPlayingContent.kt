@@ -74,8 +74,11 @@ internal fun NowPlayingContent(
             if (layout.twoPane) {
                 Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        artwork(Modifier.size(layout.artSize.dp))
+                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        // Use the measured pane after transport/queue allocation, not the full window.
+                        // Independent width/height coercion would otherwise crop square artwork.
+                        val artSize = minOf(layout.artSize.dp, maxWidth, maxHeight)
+                        artwork(Modifier.size(artSize))
                     }
                     Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally) { metadata() }

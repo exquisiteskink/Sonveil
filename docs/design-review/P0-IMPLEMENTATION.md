@@ -28,16 +28,27 @@ The existing artwork atmosphere, glass surfaces, gold fallback, covers, and flat
 
 Robolectric is automated JVM UI testing, not device instrumentation. No coverage percentage was measured; release unit tests and release APK packaging/signing were not run for this change.
 
+## Phone smoke test and landscape follow-up
+
+P0 was checkpointed in `9b826af`. An in-place debug update was installed on the connected Galaxy Z Fold6 after confirming the signing certificate matched; app data was retained.
+
+- Observed portrait light/dark player, queue navigation, and ADB-injected keyboard seeking (1:26 → 1:31 → 1:26). These are not physical-keyboard or TalkBack listening tests.
+- The 200% landscape stress test exposed artwork squeezed into a rectangle. The follow-up now sizes square artwork against the measured pane after transport/queue allocation.
+- The new regression failed before the fix; the full suite afterward passed **172 tests**, zero failures/errors/skips. Debug APK and debug/release lint tasks succeeded; `git diff --check` passed.
+- The follow-up APK is installed. Normal-size portrait player was captured successfully. A corrected 200% landscape device capture was not completed before the user requested normal text size.
+- Original phone settings were restored and font scale verified at **1.0**: automatic rotation enabled, user rotation 0. No display density change was made.
+- Captures and logs are local under `/tmp/sonveil-p0-phone/`; they are not committed.
+
 ## Remaining acceptance checks
 
 **P0 device/accessibility sign-off is still pending.** These automated results are not a WCAG certification or a visual/performance sign-off.
 
 | Check | Status |
 | --- | --- |
-| Current-device light/dark screenshots and visual comparison | NOT RUN |
+| Current-device light/dark screenshots and visual comparison | Portrait player/queue smoke-tested; comprehensive visual comparison pending |
 | TalkBack exploration, seek announcements, and focus return | NOT RUN |
-| Physical keyboard/D-pad and IME interaction | NOT RUN |
-| 100/150/200% system text, display scaling, split screen, and landscape | NOT RUN (one 200% short-phone layout is covered in Robolectric) |
+| Physical keyboard/D-pad and IME interaction | ADB-injected seeking passed; physical keyboard and IME pending |
+| 100/150/200% system text, display scaling, split screen, and landscape | Normal portrait and 200% stress test observed; landscape fix covered in Robolectric, corrected stress-test device capture pending; split-screen/150% pending |
 | Live Navidrome slow/offline/auth/error and duplicate-page behavior | NOT RUN |
 | Physical playback, background/lock-screen controls, external EQ, and audio regression listening | NOT RUN |
 | Sign-out/account switch during in-flight reads and playback | NOT RUN |
