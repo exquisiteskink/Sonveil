@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -390,7 +391,7 @@ fun SongRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Normal,
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.bodyLarge,
             )
             if (showArtist && !song.artist.isNullOrBlank()) {
                 Text(
@@ -398,15 +399,17 @@ fun SongRow(
                     color = p.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Text(
-                formatDuration(song.duration),
-                color = p.textTertiary,
-                fontSize = 13.sp,
-            )
         }
+        Text(
+            formatDuration(song.duration),
+            color = p.textTertiary,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 12.dp, end = 8.dp),
+        )
         if (favorite) {
             Icon(
                 Icons.Rounded.Favorite,

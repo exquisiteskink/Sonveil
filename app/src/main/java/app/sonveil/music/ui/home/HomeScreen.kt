@@ -44,7 +44,6 @@ import app.sonveil.music.ui.components.ArtistTile
 import app.sonveil.music.ui.components.ErrorText
 import app.sonveil.music.ui.components.GenreChip
 import app.sonveil.music.ui.components.HorizontalAlbums
-import app.sonveil.music.ui.components.PlaylistChip
 import app.sonveil.music.ui.components.SectionHeader
 import app.sonveil.music.ui.components.SongRow
 import app.sonveil.music.ui.theme.LocalClient
@@ -67,6 +66,7 @@ fun HomeScreen(
     onAlbums: () -> Unit,
     onFavorites: () -> Unit,
     onPlaylist: (String) -> Unit,
+    onPlaylists: () -> Unit,
     onAlbum: (String) -> Unit,
     onArtist: (String) -> Unit,
 ) {
@@ -171,23 +171,13 @@ fun HomeScreen(
             }
 
             // Your playlists
-            SectionHeader("Your playlists")
+            PlaylistPreview(playlists, onPlaylist, onPlaylists)
             if (playlists.isEmpty() && !loading && "Playlists" !in errors) {
                 Text(
                     "No playlists yet",
                     color = p.textSecondary,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
-            } else {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    playlists.forEach { playlist ->
-                        PlaylistChip(playlist, onClick = { onPlaylist(playlist.id) })
-                    }
-                }
             }
             Spacer(Modifier.height(18.dp))
 

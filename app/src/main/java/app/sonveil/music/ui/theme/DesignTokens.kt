@@ -9,7 +9,7 @@ object SonveilSize {
     val PlayerGutter = 24.dp
     val MiniPlayer = 72.dp
     val MiniGap = 12.dp
-    val Navigation = 56.dp
+    val Navigation = 80.dp
 }
 
 /** Additional space occupied by the overlay, beyond Scaffold's own navigation/system insets. */

@@ -27,14 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
-import app.sonveil.music.ui.theme.textSecondary
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.navigation.NavType
@@ -173,14 +167,7 @@ private fun SessionSplash() {
     }
 }
 
-private data class Tab(val route: String, val label: String, val icon: Int)
-
-private val tabs = listOf(
-    Tab("home", "Home", R.drawable.ic_nav_home),
-    Tab("artists", "Artists", R.drawable.ic_nav_artists),
-    Tab("search", "Search", R.drawable.ic_nav_search),
-    Tab("settings", "Settings", R.drawable.ic_nav_settings),
-)
+private val tabs = app.sonveil.music.ui.components.navigationTabs
 
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -237,38 +224,11 @@ private fun SonveilRoot(
                             .focusGroup()
                             .sonveilGlass(p, 20.dp),
                     ) {
-                        NavigationBar(
-                            modifier = Modifier.height(app.sonveil.music.ui.theme.SonveilSize.Navigation),
-                            containerColor = Color.Transparent,
-                            contentColor = p.onBackground,
-                            tonalElevation = 0.dp,
-                            windowInsets = WindowInsets(0, 0, 0, 0),
-                        ) {
-                            tabs.forEach { tab ->
-                                val selected = route == tab.route
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = {
-                                        nav.navigate(tab.route) {
-                                            popUpTo("home") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(tab.icon),
-                                            contentDescription = tab.label,
-                                            modifier = Modifier.size(24.dp),
-                                            tint = if (selected) p.primary else p.textSecondary,
-                                        )
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = p.primary,
-                                        unselectedIconColor = p.textSecondary,
-                                        indicatorColor = Color.Transparent,
-                                    ),
-                                )
+                        app.sonveil.music.ui.components.SonveilNavigationBar(route) { destination ->
+                            nav.navigate(destination) {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                         Spacer(
@@ -318,8 +278,15 @@ private fun SonveilRoot(
                         onAlbums = { nav.navigate("albums") },
                         onFavorites = { nav.navigate("favorites") },
                         onPlaylist = { nav.navigate("playlist/${encode(it)}") },
+                        onPlaylists = { nav.navigate("playlists") },
                         onAlbum = { nav.navigate("album/${encode(it)}") },
                         onArtist = { nav.navigate("artist/${encode(it)}") },
+                    )
+                }
+                composable("playlists") {
+                    app.sonveil.music.ui.playlist.PlaylistsScreen(
+                        onBack = { nav.popBackStack() },
+                        onPlaylist = { nav.navigate("playlist/${encode(it)}") },
                     )
                 }
                 composable("albums") {

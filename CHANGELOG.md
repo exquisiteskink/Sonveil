@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.15 — 2026-10-11
 
 ### Changed
 - Show explicit loading, failure, retry, and genuinely empty library states; keep Back available when details fail.
@@ -11,11 +11,15 @@
 - Adapt Now Playing to short windows and large text, keep transport/queue access visible, and hide inactive sheets from accessibility navigation.
 - Reserve measured mini-player space in scrolling screens, use an adaptive artist grid, and allocate 48dp player metadata actions.
 - Label technical format information as source-file metadata rather than device-output quality.
+- Keep landscape player artwork square inside its measured pane after transport/queue allocation.
+- Add visible labels to existing navigation tabs with matching mini-player clearance.
+- Limit Home to six playlist previews and add a complete lazy playlist list with Back, loading/error states, and retry.
+- Use consistent title/artist typography and trailing duration in song rows without changing playback actions.
 
 ### Validation
-- 171 debug JVM/Robolectric tests passed; debug APK built.
+- 179 debug JVM/Robolectric tests passed after the initial P1 slice; debug APK built.
 - Debug/release lint: no errors, 37 warnings and 5 informational findings each.
-- Device visuals, TalkBack, physical keyboard, live server, and audio checks remain pending. See `docs/design-review/P0-IMPLEMENTATION.md` for scope and acceptance gaps.
+- Normal-size phone smoke tests cover player/queue, labeled navigation, playlist browsing, and track rows. Full TalkBack, physical keyboard, server-failure, and audio acceptance remain pending. See `docs/design-review/P0-IMPLEMENTATION.md` and `docs/design-review/P1-IMPLEMENTATION.md` for scope and acceptance gaps.
 
 ## 1.3.14 — 2026-10-10
 
