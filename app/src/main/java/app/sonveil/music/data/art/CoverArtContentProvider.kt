@@ -60,7 +60,13 @@ class CoverArtContentProvider : ContentProvider() {
                 albumCoverIds.resolve(account, parsed.coverId) {
                     // openFile runs on the image loader / content provider worker,
                     // never the playback thread. Fetch the exact album screen cover.
-                    val cover = runBlocking { container.client.getAlbum(parsed.coverId).coverArt }
+                    // openFile runs on a binder thread: bound the network resolve well
+                    // below the 60s HTTP ceiling so a hung server cannot park it.
+                    val cover = runBlocking {
+                        kotlinx.coroutines.withTimeout(10_000L) {
+                            container.client.getAlbum(parsed.coverId).coverArt
+                        }
+                    }
                     if (container.client.artworkNamespace != namespace) {
                         throw FileNotFoundException("Artwork account changed")
                     }

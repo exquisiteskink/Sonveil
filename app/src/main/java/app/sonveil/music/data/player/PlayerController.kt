@@ -368,7 +368,10 @@ class PlayerController(
     }
 
     fun seek(ms: Long) {
-        val bounded = ms.coerceIn(0L, _state.value.durationMs.coerceAtLeast(0L))
+        val duration = _state.value.durationMs
+        // With an unknown duration (buffering / missing metadata), do not pin the
+        // target to 0 — Media3 clamps against the real duration once known.
+        val bounded = if (duration > 0L) ms.coerceIn(0L, duration) else ms.coerceAtLeast(0L)
         controller?.seekTo(bounded)
         _state.update { it.copy(positionMs = bounded) }
     }
@@ -379,7 +382,7 @@ class PlayerController(
             val pending = pendingPlay
             val q = _state.value.queue.toMutableList()
             q.add((_state.value.index + 1).coerceAtMost(q.size), song)
-            setQueue(q, pending?.index ?: 0, pending?.autoPlay ?: false)
+            setQueue(q, pending?.index ?: 0, pending?.autoPlay ?: false, positionMs = _state.value.positionMs)
             return
         }
         val insertAt = (_state.value.index + 1).coerceAtMost(_state.value.queue.size)
@@ -397,7 +400,7 @@ class PlayerController(
         val c = controller
         if (c == null) {
             val pending = pendingPlay
-            setQueue(_state.value.queue + song, pending?.index ?: 0, pending?.autoPlay ?: false)
+            setQueue(_state.value.queue + song, pending?.index ?: 0, pending?.autoPlay ?: false, positionMs = _state.value.positionMs)
             return
         }
         val item = song.toMediaItem()
@@ -736,12 +739,12 @@ class PlayerController(
     private fun maybeRestoreAfterProcessDeath(playWhenReady: Boolean) {
         if (restoreAttempted) return
         restoreAttempted = true
-        if (client.credentials == null) return
+        val creds = client.credentials ?: return
         if (_state.value.queue.isNotEmpty()) return
         val c = controller
         if (c != null && c.mediaItemCount > 0) return
         val snap = queueStore.load() ?: return
-        val key = downloadStore?.serverKey(client.credentials!!)
+        val key = downloadStore?.serverKey(creds)
         if (key != null && snap.serverKey != key) {
             queueStore.clear()
             return

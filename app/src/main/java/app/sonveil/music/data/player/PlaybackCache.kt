@@ -28,6 +28,9 @@ internal class PlaybackCache(context: Context, private val client: SubsonicClien
     private var prefetchGeneration = 0L
     private var prefetchWriter: CacheWriter? = null
     private var prefetchedUris: List<Uri> = emptyList()
+    // URIs are account-independent (sonveil:// id+bitrate); a credential change must
+    // re-run prefetch so the new account's cache-keyed bytes are populated.
+    @Volatile private var prefetchedCreds: Any? = null
     private val cache = runCatching {
         synchronized(PlaybackCache::class.java) {
             sharedCache ?: SimpleCache(File(context.cacheDir, "playback-audio"), LeastRecentlyUsedCacheEvictor(MAX_BYTES),
@@ -79,9 +82,11 @@ internal class PlaybackCache(context: Context, private val client: SubsonicClien
         if (released) return
         val factory = cachedHttp ?: return
         val remote = uris.filter { PlaybackStreamUri.songId(it) != null }.take(2)
+        val creds = client.credentials
         val generation = synchronized(prefetchLock) {
-            if (remote == prefetchedUris) return
+            if (remote == prefetchedUris && creds === prefetchedCreds) return
             prefetchedUris = remote
+            prefetchedCreds = creds
             prefetchGeneration++
             prefetchWriter?.cancel()
             prefetchGeneration

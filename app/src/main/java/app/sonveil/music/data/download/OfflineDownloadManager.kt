@@ -127,11 +127,17 @@ class OfflineDownloadManager(
     fun clearDownloads() {
         val creds = client.credentials
         work.stop {
-            withContext(Dispatchers.IO) {
-                if (creds != null) store.clearAll(store.serverKey(creds))
-                else store.clearEverything()
-            }
-            _state.value = DownloadUiState(message = "Offline downloads cleared")
+            // Filesystem failure (rename/ENOSPC) must not crash the app: surface it in UI.
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    if (creds != null) store.clearAll(store.serverKey(creds))
+                    else store.clearEverything()
+                }
+                true
+            }.getOrDefault(false)
+            _state.value = DownloadUiState(
+                message = if (ok) "Offline downloads cleared" else "Could not clear downloads",
+            )
         }
     }
 
@@ -143,7 +149,7 @@ class OfflineDownloadManager(
     ) {
         val key = store.serverKey(creds)
         val pending = songs.filter { !store.hasSong(key, it.id) }
-        store.savePending(key, PendingDownload(collectionLabel, collectionId, pending))
+        runCatching { store.savePending(key, PendingDownload(collectionLabel, collectionId, pending)) }
         if (pending.isEmpty()) {
             store.clearPending(key)
             _state.update {

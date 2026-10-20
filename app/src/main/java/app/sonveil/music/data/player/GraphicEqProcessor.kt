@@ -20,6 +20,8 @@ class GraphicEqProcessor : BaseAudioProcessor() {
         val channels: Int,
     )
 
+    // Volatile: written by setProgram/rebuild (UI thread) under lock, read by
+    // queueInput on the playback thread without synchronization.
     @Volatile
     private var render = RenderState(false, 1f, emptyArray(), 2)
 
