@@ -187,6 +187,30 @@ fun NowPlayingHost(
             }
         }
 
+        // The Now Playing page contains scrollable content (metadata at large font
+        // scales) that consumes vertical drags before the parent's anchoredDraggable
+        // can see them. Chain any unconsumed deltas into the sheet so swiping down
+        // (collapse) and swiping up (open queue) still work over the whole screen.
+        val playerScrollConnection = remember(sheetState) {
+            object : NestedScrollConnection {
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (available.y == 0f || sheetState.settledValue == PlayerSheetValue.Queue) return Offset.Zero
+                    val sheetConsumed = sheetState.dispatchRawDelta(available.y)
+                    return Offset(0f, sheetConsumed)
+                }
+
+                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                    if (sheetState.settledValue == PlayerSheetValue.Queue) return available
+                    val settled = sheetState.settle(available.y)
+                    return Velocity(0f, available.y - settled)
+                }
+            }
+        }
+
         PositionAwareMiniBar(
             ui = ui,
             position = position,
@@ -219,6 +243,7 @@ fun NowPlayingHost(
                     val offset = sheetState.offset.takeIf { it.isFinite() } ?: heightPx
                     translationY = if (sheetState.settledValue == PlayerSheetValue.Queue) 0f else offset.coerceAtLeast(0f)
                 }
+                .nestedScroll(playerScrollConnection)
                 .anchoredDraggable(sheetState, Orientation.Vertical, enabled = sheetState.settledValue != PlayerSheetValue.Queue),
         ) {
             UltraBlurBackground(Modifier.fillMaxSize())
