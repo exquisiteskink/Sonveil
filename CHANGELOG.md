@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.16 — 2026-10-19
+
+### Fixed
+- Restore swiping on the Now Playing screen. The scrollable metadata column added in 1.3.15 for large-text accessibility was consuming vertical drags before the player sheet could see them, so neither swiping up to the queue nor swiping down to collapse worked anywhere over the content. Unconsumed scroll and flings are now forwarded to the player sheet, keeping edge scrolling and accessibility behavior intact.
+
+### Validation
+- Compose UI tests confirm fast, medium, and short upward swipes on the artwork open the queue; a deliberately slow swipe settles back on the player as intended.
+- 180 debug JVM/Robolectric tests pass; release build compiled.
+
 ## 1.3.15 — 2026-10-11
 
 ### Changed
