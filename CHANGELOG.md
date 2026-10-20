@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.3.17 — 2026-10-20
+
+### Fixed
+- Equalizer changes now reach the audio thread promptly instead of potentially keeping the previous curve indefinitely (memory visibility of the live EQ state).
+- Album artwork lookup for Android Auto can no longer hold a worker thread for up to a minute on a hung server; the resolve is now bounded to 10 seconds.
+- Clearing offline downloads reports "Could not clear downloads" instead of crashing when the filesystem refuses the operation.
+- "Play next" / "Add to queue" used before the player connects no longer discards the restored playback position.
+- Seeking works again while the track duration is still unknown (it previously snapped to the start).
+- Recent searches no longer corrupt when a query contains a control character; storage is now a JSON array with legacy migration.
+- Playback look-ahead prefetch re-runs after switching accounts so the new account's cache is populated.
+
+### Validation
+- 183 debug JVM/Robolectric tests pass.
+
 ## 1.3.16 — 2026-10-19
 
 ### Fixed
